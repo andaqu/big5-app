@@ -1,1 +1,1 @@
-web: gunicorn server:main
+web: gunicorn $FLASK_APP:app
