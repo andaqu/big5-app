@@ -57,5 +57,5 @@ heroku config:set FLASK_ENV=production
 heroku config --app #
 heroku logs --tail
 heroku run flask db upgrade
-git push heroku master
+git push heroku HEAD:master
 ```
