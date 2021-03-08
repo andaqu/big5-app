@@ -8,6 +8,7 @@ import os
 def create_app():
     app = Flask(__name__)
     
+    #* Make sure to set this env in Heroku: "heroku config:set FLASK_ENV=development"
     if os.environ['FLASK_ENV'] == "development": app.config.from_object("config.debug")
     else: app.config.from_object("config.prod")
 
