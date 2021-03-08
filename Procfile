@@ -1,1 +1,1 @@
-web: flask db migrate; flask db upgrade; flask db stamp head; gunicorn "server:create_app()"
+web: gunicorn "server:create_app()"
