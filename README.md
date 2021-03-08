@@ -15,7 +15,7 @@ big5-app
 │   ├── ext.py
 │   ├── main.py
 │   └── models.py
-├── .env
+├── .env (*)
 ├── .flaskenv
 ├── Pipfile
 ├── Procfile

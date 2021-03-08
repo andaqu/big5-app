@@ -8,9 +8,9 @@ main = Blueprint("main", __name__)
 def index():
     return f"<h>Server is running</h>"
 
-# Adds a user to the database
+# Adds user-document pair to database
 @main.route("/add", methods=["POST"])
-def add_entry():
+def add_pair():
     if request.method == 'POST':
         if request.is_json:
 
@@ -29,3 +29,6 @@ def add_entry():
             return {"error": "The request payload is not in JSON format."}
     else:
         return {"error" : "The request is not a POST request."}
+
+# Removes a user-document pair from database
+def remove_pair():
