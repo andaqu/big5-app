@@ -23,6 +23,8 @@ big5-app
 └── runtime.txt
 ```
 
+> `(*)`: not included. Should include a one-liner: SQLALCHEMY_DATABASE_URI_DEBUG = #
+
 * `config.py`: Config files for development and production. The development config file retrieves the database URI from .env, but the production config file retrieves the database URI from Heroku's set environment variable.
 * `migrations`: Folder to store database's migrations
 * `server`:
