@@ -63,10 +63,10 @@ def handle_pair(id):
         db.session.add(document)
         db.session.commit()
 
-        return {"message": f"User {user.id} successfully updated."}
+        return {"message": "success", "response": f"User {user.id} successfully updated."}
 
     elif request.method == 'DELETE':
         db.session.delete(user)
         db.session.delete(document)
         db.session.commit()
-        return {"message": f"User {user.id} successfully deleted."}
+        return {"message": "success", "response": f"User {user.id} successfully deleted."}
