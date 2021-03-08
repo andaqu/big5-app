@@ -5,10 +5,10 @@ class Document(db.Model):
     __tablename__ = "Documents"
 
     id = db.Column(db.Integer, primary_key=True)
-    document = db.Column(db.Text())
+    text = db.Column(db.Text())
 
-    def __init__(self, document):
-        self.document = document
+    def __init__(self, text):
+        self.text = text
 
 class User(db.Model):
     __tablename__ = "Users"
