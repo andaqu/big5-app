@@ -8,28 +8,33 @@ main = Blueprint("main", __name__)
 def index():
     return f"<h>Server is running</h>"
 
-# Adds user-document pair to database
+# Adds a singular user-document pair to database
 @main.route("/add", methods=["POST"])
 def add_pair():
-    if request.method == 'POST':
+    if request.method == "POST":
         if request.is_json:
 
             data = request.get_json()
 
-            user = User(o=data['o'], c=data['c'], e=data['e'], a=data['a'], n=data['n'])
-            document = Document(text=data['document'])
+            try: 
+                add(data["personality"], data["document"])
+            except KeyError: 
+                return {"state" : "error", "message": "The request payload does not contain personality and document."}
 
-            db.session.add(user)
-            db.session.add(document)
-
-            db.session.commit()
-
-            return {"message": f"User has been added successfully."}
-
+            return {"state" : "success", "message": f"User has been added successfully."}
         else:
-            return {"error": "The request payload is not in JSON format."}
+            return {"state" : "error", "message": "The request payload is not in JSON format."}
     else:
-        return {"error" : "The request is not a POST request."}
+        return {"state" : "error", "message": "The request is not a POST request."}
+
+def add(p, d):
+    user = User(o=p['o'], c=p['c'], e=p['e'], a=p['a'], n=p['n'])
+    document = Document(text=d)
+
+    db.session.add(user)
+    db.session.add(document)
+
+    db.session.commit()
 
 # Retrieve, edit or delete a user-document pair from database
 @main.route('/user/<id>', methods=['GET', 'PUT', 'DELETE'])
@@ -47,7 +52,7 @@ def handle_pair(id):
             "n" : user.n,
             "document" : document.text
         }
-        return {"message": "success", "response": response}
+        return {"state": "success", "message": response}
 
     elif request.method == 'PUT':
         data = request.get_json()
@@ -63,10 +68,10 @@ def handle_pair(id):
         db.session.add(document)
         db.session.commit()
 
-        return {"message": "success", "response": f"User {user.id} successfully updated."}
+        return {"state": "success", "message": f"User {user.id} successfully updated."}
 
     elif request.method == 'DELETE':
         db.session.delete(user)
         db.session.delete(document)
         db.session.commit()
-        return {"message": "success", "response": f"User {user.id} successfully deleted."}
+        return {"state": "success", "message": f"User {user.id} successfully deleted."}

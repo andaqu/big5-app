@@ -47,6 +47,7 @@ I won't explain why as I honestly won't bother. But I may need a reminder in the
 pipenv install #
 pipenv shell
 pipenv run pip freeze > requirements.txt
+pipenv sync
 flask run
 flask db init
 flask db migrate
