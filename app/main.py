@@ -57,12 +57,12 @@ def handle_pair(id):
     elif request.method == 'PUT':
         data = request.get_json()
 
-        user.o = data['o']
-        user.c = data['c']
-        user.e = data['e']
-        user.a = data['a']
-        user.n = data['n']
-        document.text = data['document']
+        user.o = data["personality"]["o"]
+        user.c = data["personality"]["c"]
+        user.e = data["personality"]["e"]
+        user.a = data["personality"]["a"]
+        user.n = data["personality"]["n"]
+        document.text = data["document"]
 
         db.session.add(user)
         db.session.add(document)
