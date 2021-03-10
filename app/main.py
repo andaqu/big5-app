@@ -8,41 +8,42 @@ main = Blueprint("main", __name__)
 def index():
     return f"<h>Server is running</h>"
 
-# Adds a singular user-document pair to database
-@main.route("/add", methods=["POST"])
-def add_pair():
+# Adds or updates user-document entry or entries to database
+@main.route("/populate", methods=["POST"])
+def populate():
+
+    # Check if request is a POST request
     if request.method == "POST":
-        if request.is_json:
 
-            data = request.get_json()
+        # It is assumed that data is sent as JSON
+        data = request.get_json()
+        
+        # Data must be a list to process request
+        if type(data) is not list:
+            return error("The request payload is not a list.")
 
-            try: 
-                add(data["personality"], data["document"])
-            except KeyError: 
-                return {"state" : "error", "message": "The request payload does not contain personality and document."}
+        # Check every entry contains personality or document keys before processing
+        for entry in data:
+            if "personality" not in entry or "document" not in entry:
+                return error("The request payload does not contain personality and document.")
 
-            return {"state" : "success", "message": f"User has been added successfully."}
-        else:
-            return {"state" : "error", "message": "The request payload is not in JSON format."}
+        # Process requests
+        for entry in data:
+            add_or_update(entry)
+
+        return {"state" : "success", "message": "User has been added or updated successfully."}
+
     else:
-        return {"state" : "error", "message": "The request is not a POST request."}
+        return error("The request is not a POST request.")
 
-def add(p, d):
-    user = User(o=p['o'], c=p['c'], e=p['e'], a=p['a'], n=p['n'])
-    document = Document(text=d)
+# Retrieves or deletes a user-document entry from database
+@main.route("/user/<id>", methods=["GET", "DELETE"])
+def handle(id):
 
-    db.session.add(user)
-    db.session.add(document)
-
-    db.session.commit()
-
-# Retrieve, edit or delete a user-document pair from database
-@main.route('/user/<id>', methods=['GET', 'PUT', 'DELETE'])
-def handle_pair(id):
     user = User.query.get_or_404(id)
     document = Document.query.get_or_404(id)
 
-    if request.method == 'GET':
+    if request.method == "GET":
         response = {
             "id": user.id,
             "o" : user.o,
@@ -54,24 +55,39 @@ def handle_pair(id):
         }
         return {"state": "success", "message": response}
 
-    elif request.method == 'PUT':
-        data = request.get_json()
-
-        user.o = data["personality"]["o"]
-        user.c = data["personality"]["c"]
-        user.e = data["personality"]["e"]
-        user.a = data["personality"]["a"]
-        user.n = data["personality"]["n"]
-        document.text = data["document"]
-
-        db.session.add(user)
-        db.session.add(document)
-        db.session.commit()
-
-        return {"state": "success", "message": f"User {user.id} successfully updated."}
-
-    elif request.method == 'DELETE':
+    elif request.method == "DELETE":
         db.session.delete(user)
         db.session.delete(document)
         db.session.commit()
         return {"state": "success", "message": f"User {user.id} successfully deleted."}
+
+def error(m):
+    return {"state" : "error", "message": m}
+
+def add_or_update(entry):
+
+    p = entry["personality"]
+    d = entry["document"]
+
+    # If id is not within entry, then it is an append operation
+    if "id" not in entry:
+        user = User(o=p['o'], c=p['c'], e=p['e'], a=p['a'], n=p['n'])
+        document = Document(text=d)
+
+    # Otherwise it's an update operation
+    else:
+        user = User.query.get_or_404(entry["id"])
+        document = Document.query.get_or_404(entry["id"])
+
+        user.o = p['o']
+        user.c = p['c']
+        user.e = p['e']
+        user.a = p['a']
+        user.n = p['n']
+
+        document.text = d
+
+    db.session.add(user)
+    db.session.add(document)
+
+    db.session.commit()
