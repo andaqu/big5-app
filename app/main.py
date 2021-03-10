@@ -54,7 +54,7 @@ def handle(id):
                 "e" : user.e,
                 "a" : user.a,
                 "n" : user.n
-            }
+            },
             "document" : document.text
         }
         return {"state": "success", "message": response}
