@@ -1,5 +1,6 @@
 from flask import Blueprint
 from flask import request
+from tqdm import tqdm
 from .models import *
 
 main = Blueprint("main", __name__)
@@ -8,7 +9,9 @@ main = Blueprint("main", __name__)
 def index():
     return f"<h>Server is running</h>"
 
-# Adds or updates user-document entry or entries to database
+# Takes a list of user-document entries and adds them to database
+# If alongside such entries, an identifier is given, then the entry with that identifier is edited
+#? This was found to be the better approach than sending a post request after another, creating a very-slow overhead
 @main.route("/populate", methods=["POST"])
 def populate():
 
@@ -28,7 +31,7 @@ def populate():
                 return error("The request payload does not contain personality and document.")
 
         # Process requests
-        for entry in data:
+        for entry in tqdm(data):
             add_or_update(entry)
 
         return {"state" : "success", "message": "User has been added or updated successfully."}
