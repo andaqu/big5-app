@@ -1,6 +1,5 @@
 from flask import Blueprint
 from flask import request
-from tqdm import tqdm
 from .models import *
 
 main = Blueprint("main", __name__)
