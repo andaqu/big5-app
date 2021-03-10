@@ -48,11 +48,13 @@ def handle(id):
     if request.method == "GET":
         response = {
             "id": user.id,
-            "o" : user.o,
-            "c" : user.c,
-            "e" : user.e,
-            "a" : user.a,
-            "n" : user.n,
+            "personality": {
+                "o" : user.o,
+                "c" : user.c,
+                "e" : user.e,
+                "a" : user.a,
+                "n" : user.n
+            }
             "document" : document.text
         }
         return {"state": "success", "message": response}
