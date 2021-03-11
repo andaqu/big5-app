@@ -10,10 +10,9 @@ def index():
 
 # Takes a list of user-document entries and adds them to database
 # If alongside such entries, an identifier is given, then the entry with that identifier is edited
-#? This was found to be the better approach than sending a post request after another, creating a very-slow overhead
+#? This was found to be the better approach than sending continuous post requests, creating a very-slow overhead
 @main.route("/populate", methods=["POST"])
 def populate():
-
     # Check if request is a POST request
     if request.method == "POST":
 
@@ -30,11 +29,10 @@ def populate():
                 return error("The request payload does not contain personality and document.")
 
         # Process requests
-        for entry in tqdm(data):
+        for entry in data:
             add_or_update(entry)
 
         return {"state" : "success", "message": "User has been added or updated successfully."}
-
     else:
         return error("The request is not a POST request.")
 
@@ -47,7 +45,7 @@ def handle(id):
 
     if request.method == "GET":
         response = {
-            "id": user.id,
+            "id": id,
             "personality": {
                 "o" : user.o,
                 "c" : user.c,
