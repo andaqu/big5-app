@@ -21,12 +21,12 @@ def create_app():
 
     engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
 
-    # #* When Flask is run within the context of an app (using `flask run` or `flask db stamp head`), it checks if the database contains the Word table and if it is empty. If both conditions are fulfilled, then it fills in such table using the `words.csv` file. This should only happen once, when the server is initialised for the first time.
-    # with app.app_context():
-    if engine.dialect.has_table(engine, "Word") and not db.session.query(Word).first():
-        print("Populating Words...")
-        words_df = pd.read_csv('data/words.csv')
-        words_df.to_sql("Word", engine, if_exists="append", index=False) #! This should never fail
+    #* When Flask is run within the context of an app (using `flask run` or `flask db stamp head`), it checks if the database contains the Word table and if it is empty. If both conditions are fulfilled, then it fills in such table using the `words.csv` file. This should only happen once, when the server is initialised for the first time.
+    with app.app_context():
+        if engine.dialect.has_table(engine, "Word") and not db.session.query(Word).first():
+            print("Populating Words...")
+            words_df = pd.read_csv('data/words.csv')
+            words_df.to_sql("Word", engine, if_exists="append", index=False) #! This should never fail
 
     return app
 
