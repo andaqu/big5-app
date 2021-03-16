@@ -12,6 +12,9 @@ gunicorn = "*"
 flask-migrate = "*"
 python-dotenv = "*"
 flask-script = "*"
+pandas = "*"
+numpy = "*"
+tqdm = "*"
 
 [dev-packages]
 

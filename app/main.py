@@ -1,6 +1,8 @@
-from flask import Blueprint
-from flask import request
+from flask import Blueprint, request
+from sqlalchemy import func
+from tqdm import tqdm
 from .models import *
+from .ext import *
 
 main = Blueprint("main", __name__)
 
@@ -23,13 +25,13 @@ def populate():
         if type(data) is not list:
             return error("The request payload is not a list.")
 
-        # Check every entry contains personality or document keys before processing
+        # Check that every entry contains personality or document keys before processing
         for entry in data:
             if "personality" not in entry or "document" not in entry:
                 return error("The request payload does not contain personality and document.")
 
         # Process requests
-        for entry in data:
+        for entry in tqdm(data):
             add_or_update(entry)
 
         return {"state" : "success", "message": "User has been added or updated successfully."}
@@ -37,9 +39,8 @@ def populate():
         return error("The request is not a POST request.")
 
 # Retrieves or deletes a user-document entry from database
-@main.route("/user/<id>", methods=["GET", "DELETE"])
-def handle(id):
-
+@main.route("/user/<id>", methods=["GET"])
+def retrieve(id):
     user = User.query.get_or_404(id)
     document = Document.query.get_or_404(id)
 
@@ -53,21 +54,17 @@ def handle(id):
                 "a" : user.a,
                 "n" : user.n
             },
-            "document" : document.text
+            "document" : {
+                "_text" : document.text,
+                "features" : document.features
+            }
         }
         return {"state": "success", "message": response}
-
-    elif request.method == "DELETE":
-        db.session.delete(user)
-        db.session.delete(document)
-        db.session.commit()
-        return {"state": "success", "message": f"User {user.id} successfully deleted."}
 
 def error(m):
     return {"state" : "error", "message": m}
 
 def add_or_update(entry):
-
     p = entry["personality"]
     d = entry["document"]
 
@@ -88,6 +85,7 @@ def add_or_update(entry):
         user.n = p['n']
 
         document.text = d
+        document.features = document.compute_features()
 
     db.session.add(user)
     db.session.add(document)
