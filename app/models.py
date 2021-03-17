@@ -13,8 +13,6 @@ class Document(db.Model):
 
     def __init__(self, text):
         self.text = text
-        self.features = self.compute_features()
-
 
     def compute_features(self):
 
@@ -48,6 +46,7 @@ class Document(db.Model):
             # Aggregate feature values within total
             total += np.nan_to_num(new, 0) * count[word]
 
+        # set(count) - set(wordfs) is the set of words in the document not in the Words table
         for word in set(count) - set(wordfs):
             sub += (FLOATS == True) * count[word]
 
@@ -66,7 +65,7 @@ class Document(db.Model):
         avg_word_len = (sum(map(len, words)) - text.count("''")) / float(len(words)) 
         total.append(avg_word_len)
 
-        return total
+        self.features = total
         
 
 class User(db.Model):

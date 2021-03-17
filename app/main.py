@@ -1,6 +1,5 @@
 from flask import Blueprint, request
 from sqlalchemy import func
-from tqdm import tqdm
 from .models import *
 from .ext import *
 
@@ -23,20 +22,29 @@ def populate():
         
         # Data must be a list to process request
         if type(data) is not list:
-            return error("The request payload is not a list.")
+            return message("The request payload is not a list.", s="error")
 
         # Check that every entry contains personality or document keys before processing
         for entry in data:
             if "personality" not in entry or "document" not in entry:
-                return error("The request payload does not contain personality and document.")
+                return message("The request payload does not contain personality and document.", s="error")
 
         # Process requests
-        for entry in tqdm(data):
-            add_or_update(entry)
+        for entry in data:
+            p = entry["personality"]
+            d = entry["document"]
 
-        return {"state" : "success", "message": "User has been added or updated successfully."}
+            user = User(o=p['o'], c=p['c'], e=p['e'], a=p['a'], n=p['n'])
+            document = Document(text=d)
+
+            db.session.add(user)
+            db.session.add(document)
+
+            db.session.commit()
+
+        return message("User has been added or updated successfully.")
     else:
-        return error("The request is not a POST request.")
+        return message("The request is not a POST request.", s="error")
 
 # Retrieves or deletes a user-document entry from database
 @main.route("/user/<id>", methods=["GET"])
@@ -59,35 +67,7 @@ def retrieve(id):
                 "features" : document.features
             }
         }
-        return {"state": "success", "message": response}
+        return message(response)
 
-def error(m):
-    return {"state" : "error", "message": m}
-
-def add_or_update(entry):
-    p = entry["personality"]
-    d = entry["document"]
-
-    # If id is not within entry, then it is an append operation
-    if "id" not in entry:
-        user = User(o=p['o'], c=p['c'], e=p['e'], a=p['a'], n=p['n'])
-        document = Document(text=d)
-
-    # Otherwise it's an update operation
-    else:
-        user = User.query.get_or_404(entry["id"])
-        document = Document.query.get_or_404(entry["id"])
-
-        user.o = p['o']
-        user.c = p['c']
-        user.e = p['e']
-        user.a = p['a']
-        user.n = p['n']
-
-        document.text = d
-        document.features = document.compute_features()
-
-    db.session.add(user)
-    db.session.add(document)
-
-    db.session.commit()
+def message(m, s="success"):
+    return {"state" : s, "message": m}
