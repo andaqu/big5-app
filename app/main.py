@@ -1,6 +1,7 @@
+from models import personality, twitter
+from .settings import USER, DOCUMENT
 from flask import Blueprint, request
-from sqlalchemy import func
-from .models import *
+from flask import abort
 from .ext import *
 
 main = Blueprint("main", __name__)
@@ -34,8 +35,8 @@ def populate():
             p = entry["personality"]
             d = entry["document"]
 
-            user = User(o=p['o'], c=p['c'], e=p['e'], a=p['a'], n=p['n'])
-            document = Document(text=d)
+            user = personality.User(o=p['o'], c=p['c'], e=p['e'], a=p['a'], n=p['n'])
+            document = personality.Document(text=d)
 
             db.session.add(user)
             db.session.add(document)
@@ -47,10 +48,14 @@ def populate():
         return message("The request is not a POST request.", s="error")
 
 # Retrieves or deletes a user-document entry from database
-@main.route("/user/<id>", methods=["GET"])
-def retrieve(id):
-    user = User.query.get_or_404(id)
-    document = Document.query.get_or_404(id)
+# TODO: May need to be parametised eventually "/<schema>/<id>"
+@main.route("/<schema>/<id>", methods=["GET"])
+def retrieve(schema, id):
+    try:
+        user = USER[schema].query.get_or_404(id)
+        document = DOCUMENT[schema].query.get_or_404(id)
+    except:
+        abort(404)
 
     if request.method == "GET":
         response = {

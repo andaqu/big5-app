@@ -1,11 +1,10 @@
 from collections import Counter
 from sqlalchemy import func
-from .ext import db
+from app.ext import db
 import numpy as np
-import time
 
-class Document(db.Model):
-    __tablename__ = "Document"
+class BaseDocument(db.Model):
+    __abstract__ = True
 
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text())
@@ -15,7 +14,6 @@ class Document(db.Model):
         self.text = text
 
     def compute_features(self):
-
         # Duplicate every apostrophe: this is for PostgreSQL, since apostrophe's are escaped by themselves
         text = self.text.replace("'", "''")
 
@@ -35,6 +33,8 @@ class Document(db.Model):
         wordfs = {x[0]: x[1:] for x in wordfs}
 
         for word in wordfs:
+
+            word = "#null" if word == "null" else word
             wordf = wordfs[word]
 
             # Convert wordf into a numpy array called new
@@ -62,30 +62,18 @@ class Document(db.Model):
         total = total.tolist()
 
         # average word length is a last-second feature, deal with double apostrophe
-        avg_word_len = (sum(map(len, words)) - text.count("''")) / float(len(words)) 
-        total.append(avg_word_len)
+        # avg_word_len = (sum(map(len, words)) - text.count("''")) / float(len(words)) 
+        # total.append(avg_word_len)
 
         self.features = total
-        
-
-class User(db.Model):
-    __tablename__ = "User"
+ 
+class BaseUser(db.Model):
+    __abstract__ = True
 
     id = db.Column(db.Integer, primary_key=True)
-    o = db.Column(db.Float())
-    c = db.Column(db.Float())
-    e = db.Column(db.Float())
-    a = db.Column(db.Float())
-    n = db.Column(db.Float())
-
-    def __init__(self, o, c, e, a, n):
-        self.o = o
-        self.c = c
-        self.e = e
-        self.a = a
-        self.n = n
 
 class Word(db.Model):
+    __table_args__ = {'schema': "public"}
     __tablename__ = "Word"
 
     word = db.Column(db.String, primary_key=True)

@@ -1,7 +1,8 @@
+from models import base, personality, twitter
 from flask_migrate import Migrate
+from .settings import CONFIG
 from flask import Flask
 from .main import main
-from .models import *
 from .ext import db
 import os
 
@@ -20,7 +21,5 @@ def create_app():
 
     return app
 
-CONFIG = {"development" : "config.debug", "production": "config.prod", None : "config.debug"}
-
 # Useful commands for migration: flask db init, flask db migrate, flask db upgrade, flask db stamp head (in that order)
-migrate = Migrate(compare_type=True)
+migrate = Migrate(compare_type=True, include_schemas=True)
