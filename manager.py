@@ -2,6 +2,7 @@ from app import create_app, db, base, personality, twitter
 from app.settings import DOCUMENT, USER
 from sqlalchemy import create_engine
 from flask_migrate import Manager
+from bot import Tweety
 import pandas as pd
 import time
 
