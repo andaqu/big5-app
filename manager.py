@@ -14,13 +14,13 @@ def populate_words():
     # Check if table "Word" exists and if it is empty
     if engine.dialect.has_table(engine, "Word") and not db.session.query(base.Word).first():
         print("Populating words...")
-        words_df = pd.read_csv('data/words.csv')
+        words_df = pd.read_csv("data/words.csv")
         words_df.to_sql("Word", engine, if_exists="append", index=False)
     else:
         print("Table 'Word' does not exist or is not empty. Migrate and try again.")
 
-@manager.option('-s', '--schema', dest="schema", default="personality", help="Schema to featurise documents of")
-@manager.option('-n', '--number', dest="n", help="Batch size to commit to database", default=100)
+@manager.option("-s", "--schema", dest="schema", default="personality", help="Schema to featurise documents of")
+@manager.option("-n", "--number", dest="n", help="Batch size to commit to database", default=100)
 def featurise_documents(schema, n):
     try:
         n = int(n)

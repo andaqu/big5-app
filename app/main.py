@@ -35,7 +35,7 @@ def populate():
             p = entry["personality"]
             d = entry["document"]
 
-            user = personality.User(o=p['o'], c=p['c'], e=p['e'], a=p['a'], n=p['n'])
+            user = personality.User(o=p["o"], c=p["c"], e=p["e"], a=p["a"], n=p["n"])
             document = personality.Document(text=d)
 
             db.session.add(user)
@@ -48,7 +48,6 @@ def populate():
         return message("The request is not a POST request.", s="error")
 
 # Retrieves or deletes a user-document entry from database
-# TODO: May need to be parametised eventually "/<schema>/<id>"
 @main.route("/<schema>/<id>", methods=["GET"])
 def retrieve(schema, id):
     try:

@@ -13,6 +13,6 @@ class User(BaseUser, db.Model):
     last = db.Column(db.Integer())
 
     def __init__(self, id, first, last):
-        self.id = i d
+        self.id = id
         self.first = first
         self.last = last

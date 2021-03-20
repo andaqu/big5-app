@@ -13,7 +13,7 @@ def create_app():
     #* Make sure to set this env in Heroku: "heroku config:set FLASK_ENV=development"
     # if os.environ['FLASK_ENV'] == "development": app.config.from_object("config.debug")
     # else: app.config.from_object("config.prod")
-    app.config.from_object(CONFIG[os.getenv('FLASK_ENV')])
+    app.config.from_object(CONFIG[os.getenv("FLASK_ENV")])
 
     db.init_app(app)
     migrate.init_app(app, db)
