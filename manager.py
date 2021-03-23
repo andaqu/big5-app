@@ -136,9 +136,5 @@ def get_tweets(n, b):
 
     return
 
-@manager.command
-def print_hello():
-    print("Hello!")
-
 if __name__ == "__main__":
     manager.run()
