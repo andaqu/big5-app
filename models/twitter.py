@@ -22,5 +22,6 @@ class User(BaseUser, db.Model):
 
     follows = db.Column(db.ARRAY(db.String()))
 
-    def __init__(self, follows):
+    def __init__(self, id, follows):
+        self.id = id
         self.follows = follows
