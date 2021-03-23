@@ -1,7 +1,5 @@
-from models import personality, twitter
-from .settings import USER, DOCUMENT
 from flask import Blueprint, request
-from flask import abort
+from .helper import *
 from .ext import *
 
 main = Blueprint("main", __name__)
@@ -13,65 +11,44 @@ def index():
 # Takes a list of user-document entries and adds them to database
 # If alongside such entries, an identifier is given, then the entry with that identifier is edited
 #? This was found to be the better approach than sending continuous post requests, creating a very-slow overhead
-@main.route("/populate", methods=["POST"])
-def populate():
+@main.route("/<schema>/populate", methods=["POST"])
+def populate(schema):
+
     # Check if request is a POST request
-    if request.method == "POST":
-
-        # It is assumed that data is sent as JSON
-        data = request.get_json()
-        
-        # Data must be a list to process request
-        if type(data) is not list:
-            return message("The request payload is not a list.", s="error")
-
-        # Check that every entry contains personality or document keys before processing
-        for entry in data:
-            if "personality" not in entry or "document" not in entry:
-                return message("The request payload does not contain personality and document.", s="error")
-
-        # Process requests
-        for entry in data:
-            p = entry["personality"]
-            d = entry["document"]
-
-            user = personality.User(o=p["o"], c=p["c"], e=p["e"], a=p["a"], n=p["n"])
-            document = personality.Document(text=d)
-
-            db.session.add(user)
-            db.session.add(document)
-
-            db.session.commit()
-
-        return message("User has been added or updated successfully.")
-    else:
+    if request.method != "POST":
         return message("The request is not a POST request.", s="error")
+
+    # Check if schema is valid
+    if schema not in schemas:
+        return message("Specified schema is not valid.", s="error")
+
+    # It is assumed that data is sent as JSON
+    data = request.get_json()
+    
+    # Data must be a list to process request
+    if type(data) is not list:
+        return message("The request payload is not a list.", s="error")
+
+    # Check that every entry contains the required keys before processing
+    for entry in data:
+        if not all(x in required[schema] for x in entry):
+            return message("The request payload contains invalid and/or missing keys.", s="error")
+
+    if schema == "twitter": insert_to_twitter(data)
+    elif schema == "personality": insert_to_personality(data)
+
+    return message(f"Population of {len(data)} objects completed successfully.")
+        
 
 # Retrieves or deletes a user-document entry from database
 @main.route("/<schema>/<id>", methods=["GET"])
 def retrieve(schema, id):
-    try:
-        user = USER[schema].query.get_or_404(id)
-        document = DOCUMENT[schema].query.get_or_404(id)
-    except:
-        abort(404)
 
-    if request.method == "GET":
-        response = {
-            "id": id,
-            "personality": {
-                "o" : user.o,
-                "c" : user.c,
-                "e" : user.e,
-                "a" : user.a,
-                "n" : user.n
-            },
-            "document" : {
-                "_text" : document.text,
-                "features" : document.features
-            }
-        }
-        return message(response)
+    if request.method != "GET":
+        return message("The request is not a GET request.", s="error")
 
-def message(m, s="success"):
-    return {"state" : s, "message": m}
+    if schema not in schemas:
+        return message("Specified schema is not valid.", s="error")
+
+    if schema == "twitter": return retrieve_from_twitter(id)
+    elif schema == "personality": return retrieve_from_personality(id)

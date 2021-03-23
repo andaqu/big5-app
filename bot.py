@@ -40,11 +40,16 @@ class Tweety:
         return document
 
     def get_document(self, user_id:str, stored_tweets:int = 0, first:int = None, last:int = None):
-        """If tweets of user with user_id have already been extracted, the total number of stored tweets, the first tweet id and the last tweet id are to be specified. The function checks if new tweets have been posted, and if not, it continues where it left off; else it starts over.
+        """
+        If tweets of user with user_id have already been extracted, the total number of stored tweets, the first tweet id and the last tweet id are to be specified. The function checks if new tweets have been posted, and if not, it continues where it left off; else it starts over.
 
         Returns False if the user account is invalid or what is stored is greater than what is to be extracted.
         Else, it returns the pre-processed text from the tweets of the user with the specified user_id. It also returns the first and last tweet ids to update within the database, alongside the current total of tweets, which is to be accumulated with the database's total.
         """
+        
+        #* 3-input XOR ( ͡° ͜ʖ ͡°)
+        if (bool(stored_tweets) ^ bool(first)) | (bool(first) ^ bool(last)):
+            return {"valid": False, "output": f"User [{user_id}]: stored_tweets, first, and last parameters must either all be specified or omitted altogether."}
 
         extracted_tweets = []
         tweets_to_extract = self.tweets_to_extract
@@ -57,10 +62,8 @@ class Tweety:
                 include_rts = False, 
                 tweet_mode = "extended")[0]
         except:
-            print(f"User [{user_id}]: Could not read tweets.")
-            return False
+            return {"valid": False, "output": f"User [{user_id}]: Could not read tweets."}
         
-
         # Initialise pointers
         p1, p2 = (first_tweet.id, first_tweet.id)
 
@@ -70,16 +73,14 @@ class Tweety:
 
             # Ensure that what is stored is less than what to extract
             if tweets_to_extract <= stored_tweets:
-                print(f"User [{user_id}]: Attempting to extract less or the same amount of tweets than stored.")
-                return False
+                return {"valid": False, "output": f"User [{user_id}]: Skipping because attempting to extract less or the same amount of tweets than stored."}
             else:
                 tweets_to_extract -= stored_tweets
         else:
-            # To restart processs due to new tweets or never-seen-before user
+            # To restart process due to new tweets or never-seen-before user
             extracted_tweets.append(first_tweet)
             tweets_to_extract -= 1
             stored_tweets = 0
-
 
         while tweets_to_extract > 0:
 
@@ -93,8 +94,7 @@ class Tweety:
             # Break if there are no more tweets
             if len(tweets) == 0: 
                 if len(extracted_tweets) == 0: 
-                    print(f"User [{user_id}]: No more tweets available than what's already stored.")
-                    return False
+                    return {"valid": False, "output": f"User [{user_id}]: No more tweets available than what's already stored."}
                 break
 
             p2 = tweets[-1].id
@@ -112,4 +112,4 @@ class Tweety:
 
         document = self.textualise(extracted_tweets)
 
-        return document, len(extracted_tweets) + stored_tweets, p1, p2
+        return {"valid" : True, "output": {"text": document, "stored_tweets": len(extracted_tweets) + stored_tweets, "first": p1, "last": p2}}

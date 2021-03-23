@@ -15,6 +15,7 @@ flask-script = "*"
 pandas = "*"
 numpy = "*"
 tweepy = "*"
+simplejson = "*"
 
 [dev-packages]
 

@@ -15,9 +15,10 @@ class User(BaseUser, db.Model):
     a = db.Column(db.Float())
     n = db.Column(db.Float())
 
-    def __init__(self, o, c, e, a, n):
-        self.o = o
-        self.c = c
-        self.e = e
-        self.a = a
-        self.n = n
+    def __init__(self, personality):
+
+        self.o = personality["o"]
+        self.c = personality["c"]
+        self.e = personality["e"]
+        self.a = personality["a"]
+        self.n = personality["n"]
