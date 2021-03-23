@@ -20,9 +20,7 @@ class User(BaseUser, db.Model):
     __table_args__ = {'schema': "twitter"}
     __tablename__ = "User"
 
-    id = db.Column(db.String, primary_key=True)
     follows = db.Column(db.ARRAY(db.String()))
 
-    def __init__(self, id, follows):
-        self.id = id
+    def __init__(self, follows):
         self.follows = follows
