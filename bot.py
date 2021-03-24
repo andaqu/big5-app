@@ -1,3 +1,4 @@
+from requests.exceptions import ChunkedEncodingError
 import tweepy as tw
 import os
 import re
@@ -49,7 +50,7 @@ class Tweety:
         
         #* 3-input XOR ( ͡° ͜ʖ ͡°)
         if (bool(stored_tweets) ^ bool(first)) | (bool(first) ^ bool(last)):
-            return {"valid": False, "output": f"User [{user_id}]: stored_tweets, first, and last parameters must either all be specified or omitted altogether."}
+            return {"valid": False, "output": f"User [{user_id}]: stored_tweets, first, and last parameters must either all be specified or omitted altogether.", "sleep": False}
 
         extracted_tweets = []
         tweets_to_extract = self.tweets_to_extract
@@ -61,8 +62,12 @@ class Tweety:
                 count = 1, 
                 include_rts = False, 
                 tweet_mode = "extended")[0]
+        except ChunkedEncodingError:
+            return {"valid": False, "output": f"User [{user_id}]: Could not read tweets. (ChunkEncodingError)", "sleep": True}
+        except tw.TweepError as e:
+            return {"valid": False, "output": f"User [{user_id}]: Could not read tweets. ({e})", "sleep": False}
         except:
-            return {"valid": False, "output": f"User [{user_id}]: Could not read tweets."}
+            return {"valid": False, "output": f"User [{user_id}]: Could not read tweets.", "sleep": False}
         
         # Initialise pointers
         p1, p2 = (first_tweet.id, first_tweet.id)
@@ -73,7 +78,7 @@ class Tweety:
 
             # Ensure that what is stored is less than what to extract
             if tweets_to_extract <= stored_tweets:
-                return {"valid": False, "output": f"User [{user_id}]: Skipping because attempting to extract less or the same amount of tweets than stored."}
+                return {"valid": False, "output": f"User [{user_id}]: Skipping because attempting to extract less or the same amount of tweets than stored.", "sleep": False}
             else:
                 tweets_to_extract -= stored_tweets
         else:
@@ -84,17 +89,20 @@ class Tweety:
 
         while tweets_to_extract > 0:
 
-            tweets = self.API.user_timeline(
-                user_id, 
-                count = REQUEST_LIMIT, 
-                include_rts = False, 
-                tweet_mode = "extended", 
-                max_id = p2 - 1)
+            try:
+                tweets = self.API.user_timeline(
+                    user_id, 
+                    count = REQUEST_LIMIT, 
+                    include_rts = False, 
+                    tweet_mode = "extended", 
+                    max_id = p2 - 1)
+            except:
+                return {"valid": False, "output": f"User [{user_id}]: Something weird happened!", "sleep": True}
 
             # Break if there are no more tweets
             if len(tweets) == 0: 
                 if len(extracted_tweets) == 0: 
-                    return {"valid": False, "output": f"User [{user_id}]: No more tweets available than what's already stored."}
+                    return {"valid": False, "output": f"User [{user_id}]: No more tweets available than what's already stored.", "sleep": False}
                 break
 
             p2 = tweets[-1].id
@@ -112,4 +120,4 @@ class Tweety:
 
         document = self.textualise(extracted_tweets)
 
-        return {"valid" : True, "output": {"text": document, "stored_tweets": len(extracted_tweets) + stored_tweets, "first": p1, "last": p2}}
+        return {"valid" : True, "output": {"text": document, "stored_tweets": len(extracted_tweets) + stored_tweets, "first": p1, "last": p2}, "sleep": False}

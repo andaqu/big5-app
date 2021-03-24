@@ -97,15 +97,38 @@ def get_tweets(n, b):
 
     t0 = time.time()
 
+    '''
+    while True:
+       do stuff
+       if error:
+           continue
+       else:
+           break
+    '''
+
     for document in docs:
 
-        new_doc = tweety.get_document(document.id, stored_tweets=document.stored_tweets, first=document.first, last=document.last)
+        backoff = 0.1
+        while True:
 
+            new_doc = tweety.get_document(document.id, stored_tweets=document.stored_tweets, first=document.first, last=document.last)
+        
+            # If Tweety requires us to sleep, then do so
+            if new_doc["sleep"]:
+                print(new_doc["output"])
+
+                print(f"Due to a weird error, sleeping for {60 * backoff} seconds.")
+                time.sleep(60 * backoff)
+
+                backoff += 0.5
+                continue
+            else:
+                break
+
+        # If new_document was not returned, print the associated error message
         if not new_doc["valid"]:
             print(new_doc["output"])
             continue
-
-        print(f"User [{document.id}]: Retrieved {n} tweets.")
 
         new_doc = new_doc["output"]
 
@@ -118,13 +141,15 @@ def get_tweets(n, b):
         i += 1
         to_save.append(document)
 
+        print(f"User [{document.id}]: Retrieved {n} tweets. [{i}/{b}]")
+
         # Save the documents in `to_save` in batches of `b`
         if not(i % b) and len(to_save) != 0:
             db.session.bulk_save_objects(to_save)
             db.session.commit()
             print(f"=== Stored the documents of {i}/{N} users. ===")
             to_save = []
-    
+
     if len(to_save) != 0:
         db.session.bulk_save_objects(to_save)
         db.session.commit()

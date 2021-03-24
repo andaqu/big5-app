@@ -16,6 +16,7 @@ pandas = "*"
 numpy = "*"
 tweepy = "*"
 simplejson = "*"
+requests = {extras = ["security"], version = "*"}
 
 [dev-packages]
 
