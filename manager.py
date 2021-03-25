@@ -89,22 +89,18 @@ def get_tweets(n, b):
 
     tweety = Tweety(tweets_to_extract=n)
         
-    docs = twitter.Document.query.all()
+    #! docs = twitter.Document.query.all()
+    docs = db.session.query(twitter.Document).filter(twitter.Document.text == "").order_by(twitter.Document.id).all()
     N = len(docs)
+
+    if not N:
+        print("No users to get tweets for!")
+        return
 
     i = 0
     to_save = []
 
     t0 = time.time()
-
-    '''
-    while True:
-       do stuff
-       if error:
-           continue
-       else:
-           break
-    '''
 
     for document in docs:
 
@@ -125,23 +121,21 @@ def get_tweets(n, b):
             else:
                 break
 
-        # If new_document was not returned, print the associated error message
-        if not new_doc["valid"]:
-            print(new_doc["output"])
-            continue
+        if new_doc["valid"]:
+            new_doc = new_doc["output"]
 
-        new_doc = new_doc["output"]
-
-        document.text += new_doc["text"] + " "
-        document.features = None # Since the text was updated, re-initialise the features list
-        document.stored_tweets = new_doc["stored_tweets"]
-        document.first = new_doc["first"]
-        document.last = new_doc["last"]
-
+            document.text += new_doc["text"] + " "
+            document.features = None # Since the text was updated, re-initialise the features list
+            document.stored_tweets = new_doc["stored_tweets"]
+            document.first = new_doc["first"]
+            document.last = new_doc["last"]
+            print(f"User [{document.id}]: Retrieved {n} tweets. [{i}/{b}]")
+        else:
+            document.text = None
+            print(f"{new_doc['output']} [{i}/{b}]")
+            
         i += 1
         to_save.append(document)
-
-        print(f"User [{document.id}]: Retrieved {n} tweets. [{i}/{b}]")
 
         # Save the documents in `to_save` in batches of `b`
         if not(i % b) and len(to_save) != 0:
