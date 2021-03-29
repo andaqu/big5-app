@@ -76,14 +76,14 @@ def featurise_documents(s, b):
 
 @manager.option("-n", "--tweets", dest="n", help="Number of tweets to extract from every user.", default=400)
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
-@manager.option("-l", "--light", dest="light", help="Omit users with a populated text field.", default=True)
-def get_tweets(n, b, light):
+@manager.option("-a", "--all", dest="all", help="Retrieve tweets of every user in database (restarting the process)", default=True)
+def get_tweets(n, b, all):
 
     # Check if parameters are valid
     try:
         n = int(n)
         b = int(b)
-        light = bool(int(light))
+        all = bool(int(all))
     except:
         print("Revise parameters. Quitting...")
         return
@@ -95,23 +95,19 @@ def get_tweets(n, b, light):
 
     # Initialise Tweety
     tweety = Tweety(tweets_to_extract=n)
-        
-    t0 = time.time()
 
-    if light:
+    if not all:
         # Get document rows which have an empty text field and order them by ID
         docs = db.session.query(twitter.Document).filter(twitter.Document.text == "").order_by(twitter.Document.id).all()
         N = len(docs)
 
         if N == 0:
-            print("All of the users have a text field. Set the --light parameter to False to consider all users. Quitting...")
+            print("All of the users have a text field. Set the --all parameter to False to consider all users. Quitting...")
             return
 
         update_documents(tweety, docs, N, save_every=b)
     else:
-        # If the light mode is disabled, then all of the users (irrespective if they have a text field or not), will have their 'document' updated
-        # Due to memory limitations, they will be extracted in batches
-
+        # If the --all mode is enabled, every user will have their 'document' updated (Due to memory limitations, they will be extracted in batches)
         N = db.session.query(twitter.Document).count()
 
         LIMIT = b
@@ -123,12 +119,15 @@ def get_tweets(n, b, light):
             OFFSET += LIMIT
             docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
 
-    t1 = time.time()
-    print(f"Done! That took {(t1-t0)/3600} hours in total.")
-
     return
 
-def update_documents(tweety, docs, N, save_every):
+def update_documents(tweety:Tweety, docs, N:int, save_every:int):
+    """
+    :tweety: Tweety instance
+    :docs: List of documents from Document table
+    :N: Total length of Document table
+    :save_every: Add to database in batches of save_every
+    """ 
 
     i = 0
     to_save = []
@@ -136,6 +135,10 @@ def update_documents(tweety, docs, N, save_every):
     for d in docs:
 
         backoff = 0.1
+
+        # tweety.get_document is covered in an infinite loop in the cases where the bot requires us to sleep due to an
+        # interrupted / disallowed connection (not talking about rate limits here), sleeping for `backoff` and trying
+        # the retrieving the same document again.
         while True:
 
             new_doc = tweety.get_document(d.id, stored_tweets=d.stored_tweets, first=d.first, last=d.last)
