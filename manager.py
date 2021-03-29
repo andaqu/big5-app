@@ -20,19 +20,21 @@ def populate_words():
     words_df = pd.read_csv("data/words.csv")
     words_df.to_sql("Word", engine, if_exists="append", index=False)
 
-@manager.option("-s", "--schema", dest="schema", default="personality", help="Schema to featurise documents of.")
+@manager.option("-s", "--schema", dest="s", default="personality", help="Schema to featurise documents of.")
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
-def featurise_documents(schema, b):
+def featurise_documents(s, b):
+
+    # Check if parameters are valid
     try:
         b = int(b)
-        Document = document_model[schema]
+        Document = document_model[s]
     except:
         print("Revise parameters. Quitting...")
         return
 
     # Check if table "Document" exists within the specified schema
-    if not engine.dialect.has_table(engine, "Document", schema=schema):
-        print(f"Table '{schema}.Document' does not exist. Migrate and try again.")
+    if not engine.dialect.has_table(engine, "Document", schema=s):
+        print(f"Table '{s}.Document' does not exist. Migrate and try again.")
         return
 
     # Get documents which are not featurised
@@ -43,7 +45,7 @@ def featurise_documents(schema, b):
         print("No documents to featurise.")
         return
 
-    print(f"Featurising [{N}] documents from [{schema}] schema and saving every [{b}] documents...")
+    print(f"Featurising [{N}] documents from [{s}] schema and saving every [{b}] documents...")
     
     i = 0
     to_save = []
@@ -74,71 +76,104 @@ def featurise_documents(schema, b):
 
 @manager.option("-n", "--tweets", dest="n", help="Number of tweets to extract from every user.", default=400)
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
-def get_tweets(n, b):
+@manager.option("-l", "--light", dest="light", help="Omit users with a populated text field.", default=True)
+def get_tweets(n, b, light):
 
+    # Check if parameters are valid
     try:
         n = int(n)
         b = int(b)
+        light = bool(int(light))
     except:
         print("Revise parameters. Quitting...")
         return
 
+    # Check if table "Document" exists within the specified schema
     if not engine.dialect.has_table(engine, "Document", schema="twitter"):
         print(f"Table 'twitter.Document' does not exist. Migrate and try again.")
         return
 
+    # Initialise Tweety
     tweety = Tweety(tweets_to_extract=n)
         
-    #! docs = twitter.Document.query.all()
-    docs = db.session.query(twitter.Document).filter(twitter.Document.text == "").order_by(twitter.Document.id).all()
-    N = len(docs)
+    t0 = time.time()
 
-    if not N:
-        print("No users to get tweets for!")
-        return
+    if light:
+        # Get document rows which have an empty text field and order them by ID
+        docs = db.session.query(twitter.Document).filter(twitter.Document.text == "").order_by(twitter.Document.id).all()
+        N = len(docs)
+
+        if N == 0:
+            print("All of the users have a text field. Set the --light parameter to False to consider all users. Quitting...")
+            return
+
+        update_documents(tweety, docs, N, save_every=b)
+    else:
+        # If the light mode is disabled, then all of the users (irrespective if they have a text field or not), will have their 'document' updated
+        # Due to memory limitations, they will be extracted in batches
+
+        N = db.session.query(twitter.Document).count()
+
+        LIMIT = b
+        OFFSET = 0
+        docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
+
+        while len(docs) > 0:
+            update_documents(tweety, docs, N, save_every=b)
+            OFFSET += LIMIT
+            docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
+
+    t1 = time.time()
+    print(f"Done! That took {(t1-t0)/3600} hours in total.")
+
+    return
+
+def update_documents(tweety, docs, N, save_every):
 
     i = 0
     to_save = []
 
-    t0 = time.time()
-
-    for document in docs:
+    for d in docs:
 
         backoff = 0.1
         while True:
 
-            new_doc = tweety.get_document(document.id, stored_tweets=document.stored_tweets, first=document.first, last=document.last)
-        
+            new_doc = tweety.get_document(d.id, stored_tweets=d.stored_tweets, first=d.first, last=d.last)
+
             # If Tweety requires us to sleep, then do so
             if new_doc["sleep"]:
                 print(new_doc["output"])
 
-                print(f"Due to a weird error, sleeping for {60 * backoff} seconds.")
-                time.sleep(60 * backoff)
+                timeout = 60 * backoff
+                
+                print(f"Due to a weird error, sleeping for {timeout} seconds.")
+                time.sleep(timeout)
 
                 backoff += 0.5
                 continue
             else:
                 break
 
+        i += 1
+        to_save.append(d)
+
         if new_doc["valid"]:
             new_doc = new_doc["output"]
 
-            document.text += new_doc["text"] + " "
-            document.features = None # Since the text was updated, re-initialise the features list
-            document.stored_tweets = new_doc["stored_tweets"]
-            document.first = new_doc["first"]
-            document.last = new_doc["last"]
-            print(f"User [{document.id}]: Retrieved {n} tweets. [{i}/{b}]")
-        else:
-            document.text = None
-            print(f"{new_doc['output']} [{i}/{b}]")
-            
-        i += 1
-        to_save.append(document)
+            if not d.text: d.text = ""
+            d.text += new_doc["text"] + " "
 
-        # Save the documents in `to_save` in batches of `b`
-        if not(i % b) and len(to_save) != 0:
+            d.features = None # Since the text was updated, re-initialise the features list
+            d.stored_tweets = new_doc["stored_tweets"]
+            d.first = new_doc["first"]
+            d.last = new_doc["last"]
+            print(f"User [{d.id}]: Retrieved {tweety.tweets_to_extract} tweets. ({(i % save_every)})")
+        else:
+            if d.text == "": d.text = None
+            print(f"{new_doc['output']} ({i})")
+
+        # Save the documents in `to_save` in batches of `save_every`
+        if not(i % save_every) and len(to_save) != 0:
             db.session.bulk_save_objects(to_save)
             db.session.commit()
             print(f"=== Stored the documents of {i}/{N} users. ===")
@@ -148,12 +183,6 @@ def get_tweets(n, b):
         db.session.bulk_save_objects(to_save)
         db.session.commit()
         print(f"=== Stored the documents of {i}/{N} users. ===")
-
-    t1 = time.time()
-
-    print(f"Done! That took {(t1-t0)/3600} hours in total.")
-
-    return
 
 if __name__ == "__main__":
     manager.run()
