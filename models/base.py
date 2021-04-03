@@ -66,6 +66,8 @@ class BaseDocument(db.Model):
         # total.append(avg_word_len)
 
         self.features = total
+
+        return self.features
  
 class BaseUser(db.Model):
     __abstract__ = True
