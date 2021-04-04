@@ -8,13 +8,7 @@ class Document(BaseDocument, db.Model):
 class User(BaseUser, db.Model):
     __table_args__ = {'schema': "personality"}
     __tablename__ = "User"
-
-    o = db.Column(db.Float())
-    c = db.Column(db.Float())
-    e = db.Column(db.Float())
-    a = db.Column(db.Float())
-    n = db.Column(db.Float())
-
+    
     def __init__(self, personality):
 
         self.o = personality["o"]

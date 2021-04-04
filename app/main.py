@@ -50,5 +50,4 @@ def retrieve(schema, id):
     if schema not in schemas:
         return message("Specified schema is not valid.", s="error")
 
-    if schema == "twitter": return retrieve_from_twitter(id)
-    elif schema == "personality": return retrieve_from_personality(id)
+    return json(id, schema)

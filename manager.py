@@ -1,5 +1,7 @@
-from app import create_app, db, base, twitter, document_model
+from app import create_app, db, base, twitter, document_model, user_model
+from personality_recogniser import Recogniser
 from sqlalchemy import create_engine
+from itertools import zip_longest
 from flask_migrate import Manager
 from bot import Tweety
 import pandas as pd
@@ -20,14 +22,16 @@ def populate_words():
     words_df = pd.read_csv("data/words.csv")
     words_df.to_sql("Word", engine, if_exists="append", index=False)
 
-@manager.option("-s", "--schema", dest="s", default="personality", help="Schema to featurise documents of.")
+@manager.option("-s", "--schema", dest="s", help="Schema to featurise documents of.", default="personality")
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
-def featurise_documents(s, b):
+@manager.option("-f", "--force_all", dest="f", help="Whether to featurise all of the documents.", default=False)
+def featurise_documents(s, b, f):
 
     # Check if parameters are valid
     try:
         b = int(b)
         Document = document_model[s]
+        f = bool(int(f))
     except:
         print("Revise parameters. Quitting...")
         return
@@ -37,12 +41,19 @@ def featurise_documents(s, b):
         print(f"Table '{s}.Document' does not exist. Migrate and try again.")
         return
 
-    # Get documents which are not featurised
-    empties = db.session.query(Document).filter(Document.features == None).filter(Document.text != "").all()
-    N = len(empties)
+    print(f"Force-all mode: {'enabled' if f else 'disabled'}")
+
+    if f:
+        # Get documents which have text
+        documents = db.session.query(Document).filter(Document.text != "").all()
+    else:
+        # Get documents which have text but are not featurised
+        documents = db.session.query(Document).filter(Document.features == None).filter(Document.text != "").all()
+
+    N = len(documents)
 
     if N == 0:
-        print("No documents to featurise.")
+        print("No documents to featurise. Run the command with --force_all command to include all of the documents.")
         return
 
     print(f"Featurising [{N}] documents from [{s}] schema and saving every [{b}] documents...")
@@ -52,7 +63,7 @@ def featurise_documents(s, b):
 
     t0 = time.time()
 
-    for document in empties:
+    for document in documents:
         document.compute_features()
 
         i += 1
@@ -76,14 +87,14 @@ def featurise_documents(s, b):
 
 @manager.option("-n", "--tweets", dest="n", help="Number of tweets to extract from every user.", default=400)
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
-@manager.option("-a", "--all", dest="all", help="Retrieve tweets of every user in database (restarting the process)", default=True)
-def get_tweets(n, b, all):
+@manager.option("-f", "--force_all", dest="f", help="Retrieve tweets of every user in database (restarting the process)", default=True)
+def get_tweets(n, b, f):
 
     # Check if parameters are valid
     try:
         n = int(n)
         b = int(b)
-        all = bool(int(all))
+        f = bool(int(f))
     except:
         print("Revise parameters. Quitting...")
         return
@@ -96,18 +107,11 @@ def get_tweets(n, b, all):
     # Initialise Tweety
     tweety = Tweety(tweets_to_extract=n)
 
-    if not all:
-        # Get document rows which have an empty text field and order them by ID
-        docs = db.session.query(twitter.Document).filter(twitter.Document.text == "").order_by(twitter.Document.id).all()
-        N = len(docs)
+    print(f"Force-all mode: {'enabled' if f else 'disabled'}")
 
-        if N == 0:
-            print("All of the users have a text field. Set the --all parameter to False to consider all users. Quitting...")
-            return
-
-        update_documents(tweety, docs, N, save_every=b)
-    else:
-        # If the --all mode is enabled, every user will have their 'document' updated (Due to memory limitations, they will be extracted in batches)
+    if f:
+        # If the --force_all mode is enabled, every user will have their 'document' updated
+        # (Due to memory limitations, they will be extracted in batches)
         N = db.session.query(twitter.Document).count()
 
         LIMIT = b
@@ -118,6 +122,16 @@ def get_tweets(n, b, all):
             update_documents(tweety, docs, N, save_every=b)
             OFFSET += LIMIT
             docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
+    else:
+        # Get document rows which have an empty text field and order them by ID
+        docs = db.session.query(twitter.Document).filter(twitter.Document.text == "").order_by(twitter.Document.id).all()
+        N = len(docs)
+
+        if N == 0:
+            print("All of the users have a filled-in text field. Set the --force_all parameter to True to consider all users. Quitting...")
+            return
+
+        update_documents(tweety, docs, N, save_every=b)
 
     return
 
@@ -186,6 +200,84 @@ def update_documents(tweety:Tweety, docs, N:int, save_every:int):
         db.session.bulk_save_objects(to_save)
         db.session.commit()
         print(f"=== Stored the documents of {i}/{N} users. ===")
+
+@manager.option("-b", "--batch_size", dest="b", help="Batch size to personalise and commit to database.", default=5000)
+@manager.option("-f", "--force_all", dest="f", help="Whether to personalise all of the users.", default=False)
+def personalise(b, f):
+
+    # Check if parameters are valid
+    try:
+        b = int(b)
+    except:
+        print("Revise parameters. Quitting...")
+        return
+
+    # Check if table "Document" and "User" exist within the specified schema
+    if not (engine.dialect.has_table(engine, "Document", schema="twitter") and engine.dialect.has_table(engine, "User", schema="twitter")):
+        print(f"Table 'twitter.Document' and/or 'twitter.User' do not exist. Migrate and try again.")
+        return
+
+    print(f"Force-all mode: {'enabled' if f else 'disabled'}")
+
+    Document = document_model["twitter"]
+    User = user_model["twitter"]
+
+    if f:
+        # Get users to personalise which have a filled-in features field.
+        result = db.session.query(Document, User).filter(Document.id == User.id).filter(Document.features != None).all()
+    else:
+        # Get users to personalise which have a filled-in features field and do not have a personality.
+        result = db.session.query(Document, User).filter(Document.id == User.id).filter(Document.features != None).filter(User.o == None).all()
+
+    N = len(result)
+
+    if N == 0:
+        print("No users to personalise. Check if the users' documents are featurised or try including the --force_all parameter.")
+        return
+
+    print(f"Extracting personality from [{N}] twitter users and saving every [{b}] users...")
+
+    # Initialise recogniser with a list of feature names.
+    features = [column.name for column in base.Word.__table__.columns][1:]
+    recogniser = Recogniser(features)
+
+    i = 0
+
+    t0 = time.time()
+
+    for res in chunks(result, b):
+        documents, users = zip(*res)
+        
+        X = { d.id : d.features for d in documents } # TODO: Have a look if this can be optimised
+
+        y = recogniser.personalise(X)
+        if not y: break
+
+        for u in users:
+            u.o = y[u.id]["o"]
+            u.c = y[u.id]["c"]
+            u.e = y[u.id]["e"]
+            u.a = y[u.id]["a"]
+            u.n = y[u.id]["n"]
+
+        if i + b > len(result):
+            i += len(users)
+        else:
+            i += b
+
+        db.session.bulk_save_objects(users)
+        db.session.commit()
+        print(f"=== Recognised and stored the personality of {i}/{N} users. ===")
+
+    t1 = time.time()
+    print(f"Done! That took {(t1-t0)/60} minutes in total.")
+
+    return
+
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 
 if __name__ == "__main__":
     manager.run()

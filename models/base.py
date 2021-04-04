@@ -13,6 +13,14 @@ class BaseDocument(db.Model):
     def __init__(self, text):
         self.text = text
 
+    @property
+    def json(self):
+        return {
+            "text": self.text,
+            "features": self.features
+        }
+
+
     def compute_features(self):
         # Duplicate every apostrophe: this is for PostgreSQL, since apostrophe's are escaped by themselves
         text = self.text.replace("'", "''")
@@ -72,7 +80,18 @@ class BaseDocument(db.Model):
 class BaseUser(db.Model):
     __abstract__ = True
 
+    @property
+    def json(self):
+        return {
+            "personality": { "o": self.o, "c": self.c, "e": self.e, "a": self.a, "n": self.n }
+        }
+
     id = db.Column(db.Integer, primary_key=True)
+    o = db.Column(db.Float())
+    c = db.Column(db.Float())
+    e = db.Column(db.Float())
+    a = db.Column(db.Float())
+    n = db.Column(db.Float())
 
 class Word(db.Model):
     __table_args__ = {'schema': "public"}

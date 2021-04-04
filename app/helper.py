@@ -4,6 +4,7 @@ from .ext import db
 schemas = {"twitter", "personality"}
 required = {"twitter": ["id", "follows"], "personality": ["personality", "document"]}
 document_model = {"twitter": twitter.Document, "personality": personality.Document}
+user_model = {"twitter": twitter.User, "personality": personality.User}
 
 def message(m, s="success"):
     return {"state" : s, "message": m}
@@ -42,39 +43,13 @@ def insert_to_twitter(data):
     db.session.bulk_save_objects(to_add)
     db.session.commit()
 
-def retrieve_from_personality(id):
-    user = personality.User.query.get_or_404(id)
-    document = personality.Document.query.get_or_404(id)
+def json(id, schema):
+    user = user_model[schema].query.get_or_404(id)
+    document = document_model[schema].query.get_or_404(id)
     
     response = {
-        "id": id,
-        "personality": {
-            "o" : user.o,
-            "c" : user.c,
-            "e" : user.e,
-            "a" : user.a,
-            "n" : user.n
-        },
-        "document" : {
-            "_text" : document.text,
-            "features" : document.features
-        }
-    }
-    return response
-    
-def retrieve_from_twitter(id):
-    user = twitter.User.query.get_or_404(id)
-    document = twitter.Document.query.get_or_404(id)
-    
-    response = {
-        "id": id,
-        "follows": user.follows,
-        "document" : {
-            "_text" : document.text,
-            "features" : document.features,
-            "first" : document.first,
-            "last" : document.last,
-            "stored_tweets" : document.stored_tweets
-        }
+        "_id": id,
+        "user": user.json,
+        "document" : document.json
     }
     return response
