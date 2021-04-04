@@ -20,6 +20,7 @@ class Document(BaseDocument, db.Model):
     def json(self):
         return {
             "text": self.text,
+            "features": self.features,
             "stored_tweets": self.stored_tweets,
             "first": self.first,
             "last": self.last
