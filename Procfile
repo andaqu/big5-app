@@ -1,2 +1,2 @@
 web: gunicorn "app:create_app()"
-worker: python manager.py hotfix -b 2500
+worker: python manager.py featurise_documents -s twitter -b 500

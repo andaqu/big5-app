@@ -77,7 +77,7 @@ def featurise_documents(s, b):
 
     print(f"Done! That took {(t1-t0)/60} minutes in total.")
 
-# worker: python manager.py get_tweets -n 400 -b 200
+# worker: python manager.py get_tweets -n 400 -b 200 -f
 @manager.option("-n", "--tweets", dest="n", help="Number of tweets to extract from every user.", default=400)
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
 @manager.option("-f", "--force_all", dest="f", help="Retrieve tweets of every user in database (restarting the process)", default=True)
@@ -102,19 +102,22 @@ def get_tweets(n, b, f):
 
     print(f"Force-all mode: {'enabled' if f else 'disabled'}")
 
+    #!! 11/04: Make sure to remove `.filter(twitter.Document.text != "").filter(twitter.Document.text != None)` eventually!
     if f:
         # If the --force_all mode is enabled, every user will have their 'document' updated
         # (Due to memory limitations, they will be extracted in batches)
-        N = db.session.query(twitter.Document).count()
+        N = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).count()
 
         LIMIT = b
         OFFSET = 0
-        docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
+        docs = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).limit(LIMIT).offset(OFFSET).all()
+
+        i = 0
 
         while len(docs) > 0:
-            update_documents(tweety, docs, N, save_every=b)
+            i = update_documents(tweety, docs, N, save_every=b, i=i)
             OFFSET += LIMIT
-            docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
+            docs = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).limit(LIMIT).offset(OFFSET).all()
     else:
         # Get document rows which have an empty text field and order them by ID
         docs = db.session.query(twitter.Document).filter(twitter.Document.text == "").order_by(twitter.Document.id).all()
@@ -128,15 +131,13 @@ def get_tweets(n, b, f):
 
     return
 
-def update_documents(tweety:Tweety, docs, N:int, save_every:int):
+def update_documents(tweety:Tweety, docs, N:int, save_every:int, i:int=0):
     """
     :tweety: Tweety instance
     :docs: List of documents from Document table
     :N: Total length of Document table
     :save_every: Add to database in batches of save_every
     """ 
-
-    i = 0
     to_save = []
 
     for d in docs:
@@ -177,7 +178,7 @@ def update_documents(tweety:Tweety, docs, N:int, save_every:int):
             d.stored_tweets = new_doc["stored_tweets"]
             d.first = new_doc["first"]
             d.last = new_doc["last"]
-            print(f"User [{d.id}]: Retrieved {tweety.tweets_to_extract} tweets. ({(i % save_every)})")
+            print(f"User [{d.id}]: Retrieved {tweety.tweets_to_extract} tweets. ({i})")
         else:
             if d.text == "": d.text = None
             print(f"{new_doc['output']} ({i})")
@@ -193,6 +194,8 @@ def update_documents(tweety:Tweety, docs, N:int, save_every:int):
         db.session.bulk_save_objects(to_save)
         db.session.commit()
         print(f"=== Stored the documents of {i}/{N} users. ===")
+
+    return i
 
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to personalise and commit to database.", default=5000)
 @manager.option("-f", "--force_all", dest="f", help="Whether to personalise all of the users.", default=False)
@@ -273,53 +276,6 @@ def chunks(lst, n):
     """
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
-
-#! HOTFIX COMMAND
-@manager.option("-b", "--batch_size", dest="b", help="Batch size to process and commit to database.", default=5000)
-def hotfix(b):
-    import re
-
-    # Check if parameters are valid
-    try:
-        b = int(b)
-    except:
-        print("Revise parameters. Quitting...")
-        return
-
-    # Check if table "Document" exist within the specified schema
-    if not engine.dialect.has_table(engine, "Document", schema="twitter"):
-        print(f"Table 'twitter.Document' do not exist. Migrate and try again.")
-        return
-
-    N = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).count()
-
-    LIMIT = b
-    OFFSET = 0
-    docs = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).limit(LIMIT).offset(OFFSET).all()
-
-    i = 0
-
-    while len(docs) > 0:
-        
-        # pre-process document.text here
-        for d in docs:
-            # Remove any apostrophes or dashes not within two letters
-            d.text = re.sub(r"(?<!\w)(\'|\-)|(\'|\-)(?!\w)", "", d.text)
-
-            # Convert multiple spaces to a single space
-            d.text = " ".join(d.text.split())
-            i += 1
-
-        # save documents here
-        db.session.bulk_save_objects(docs)
-        db.session.commit()
-
-        print(f"=== Removed trailing apostorphes and dashes from the documents of {i}/{N} users. ===")
-
-        OFFSET += LIMIT
-        docs = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).limit(LIMIT).offset(OFFSET).all()
-
-    print("Hotfix completed!")
 
 if __name__ == "__main__":
     manager.run()
