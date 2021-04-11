@@ -152,7 +152,7 @@ def update_documents(tweety:Tweety, docs, N:int, save_every:int):
 
         # tweety.get_document is covered in an infinite loop in the cases where the bot requires us to sleep due to an
         # interrupted / disallowed connection (not talking about rate limits here), sleeping for `backoff` and trying
-        # the retrieving the same document again.
+        # the retrieving the same document again after a backoff period.
         while True:
 
             new_doc = tweety.get_document(d.id, stored_tweets=d.stored_tweets, first=d.first, last=d.last)
@@ -260,7 +260,7 @@ def personalise(b, f):
             u.a = y[u.id]["a"]
             u.n = y[u.id]["n"]
 
-        if i + b > len(result):
+        if i + b > N:
             i += len(users)
         else:
             i += b
@@ -275,9 +275,63 @@ def personalise(b, f):
     return
 
 def chunks(lst, n):
-    """Yield successive n-sized chunks from lst."""
+    """
+    Yield successive n-sized chunks from lst.
+    """
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
+#! HOTFIX COMMAND
+@manager.option("-b", "--batch_size", dest="b", help="Batch size to process and commit to database.", default=5000)
+def hotfix(b):
+    import re
+
+    # Check if parameters are valid
+    try:
+        b = int(b)
+    except:
+        print("Revise parameters. Quitting...")
+        return
+
+    # Check if table "Document" exist within the specified schema
+    if not engine.dialect.has_table(engine, "Document", schema="twitter"):
+        print(f"Table 'twitter.Document' do not exist. Migrate and try again.")
+        return
+
+    N = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).count()
+
+    LIMIT = b
+    OFFSET = 0
+    docs = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).limit(LIMIT).offset(OFFSET).all()
+
+    i = 0
+
+    while len(docs) > 0:
+        
+        # pre-process document.text here
+        for d in docs:
+            # Remove any apostrophes or dashes not within two letters
+            d.text = re.sub(r"(?<!\w)(\'|\-)|(\'|\-)(?!\w)", "", d.text)
+
+            # Convert multiple spaces to a single space
+            d.text = " ".join(d.text.split())
+
+        # save documents here
+        db.session.bulk_save_objects(docs)
+        db.session.commit()
+
+        if i + b > N:
+            i += len(docs)
+        else:
+            i += b
+
+        print(f"=== Removed trailing apostorphes and dashes from the documents of {i}/{N} users. ===")
+
+        OFFSET += LIMIT
+        docs = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).limit(LIMIT).offset(OFFSET).all()
+
+    return
+
 
 if __name__ == "__main__":
     manager.run()
