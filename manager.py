@@ -24,14 +24,12 @@ def populate_words():
 
 @manager.option("-s", "--schema", dest="s", help="Schema to featurise documents of.", default="personality")
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
-@manager.option("-f", "--force_all", dest="f", help="Whether to featurise all of the documents.", default=False)
-def featurise_documents(s, b, f):
+def featurise_documents(s, b):
 
     # Check if parameters are valid
     try:
         b = int(b)
         Document = document_model[s]
-        f = bool(int(f))
     except:
         print("Revise parameters. Quitting...")
         return
@@ -41,50 +39,45 @@ def featurise_documents(s, b, f):
         print(f"Table '{s}.Document' does not exist. Migrate and try again.")
         return
 
-    print(f"Force-all mode: {'enabled' if f else 'disabled'}")
+    LIMIT = b
+    OFFSET = 0
 
-    if f:
-        # Get documents which have text
-        documents = db.session.query(Document).filter(Document.text != "").all()
-    else:
-        # Get documents which have text but are not featurised
-        documents = db.session.query(Document).filter(Document.features == None).filter(Document.text != "").all()
+    # Get documents which have text
+    docs = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
 
-    N = len(documents)
+    # Get documents which have text but are not featurised
+    # docs = db.session.query(Document).filter(Document.features == None).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
+
+    N = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).count()
 
     if N == 0:
-        print("No documents to featurise. Run the command with --force_all command to include all of the documents.")
+        print("No documents to featurise.")
         return
 
     print(f"Featurising [{N}] documents from [{s}] schema and saving every [{b}] documents...")
     
     i = 0
-    to_save = []
 
     t0 = time.time()
 
-    for document in documents:
-        document.compute_features()
+    while len(docs) > 0:
 
-        i += 1
-        to_save.append(document)
-        
-        # Save the documents in `to_save` in batches of `b`
-        if not(i % b):
-            db.session.bulk_save_objects(to_save)
-            db.session.commit()
-            print(f"*** Featurised and saved {i}/{N} documents. ***")
-            to_save = []
+        for d in docs:
+            d.compute_features()
+            i += 1
 
-    if len(to_save) != 0:
-        db.session.bulk_save_objects(to_save)
+        db.session.bulk_save_objects(docs)
         db.session.commit()
         print(f"*** Featurised and saved {i}/{N} documents. ***")
-    
+        
+        OFFSET += LIMIT
+        docs = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
+
     t1 = time.time()
 
     print(f"Done! That took {(t1-t0)/60} minutes in total.")
 
+# worker: python manager.py get_tweets -n 400 -b 200
 @manager.option("-n", "--tweets", dest="n", help="Number of tweets to extract from every user.", default=400)
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
 @manager.option("-f", "--force_all", dest="f", help="Retrieve tweets of every user in database (restarting the process)", default=True)
@@ -315,23 +308,18 @@ def hotfix(b):
 
             # Convert multiple spaces to a single space
             d.text = " ".join(d.text.split())
+            i += 1
 
         # save documents here
         db.session.bulk_save_objects(docs)
         db.session.commit()
-
-        if i + b > N:
-            i += len(docs)
-        else:
-            i += b
 
         print(f"=== Removed trailing apostorphes and dashes from the documents of {i}/{N} users. ===")
 
         OFFSET += LIMIT
         docs = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).limit(LIMIT).offset(OFFSET).all()
 
-    return
-
+    print("Hotfix completed!")
 
 if __name__ == "__main__":
     manager.run()
