@@ -1,2 +1,2 @@
 web: gunicorn "app:create_app()"
-worker: python manager.py featurise_documents -s twitter -b 500
+worker: python manager.py get_tweets -n 400 -b 200
