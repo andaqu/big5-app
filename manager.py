@@ -11,17 +11,6 @@ app = create_app()
 manager = Manager(app)
 engine = create_engine(app.config["SQLALCHEMY_DATABASE_URI"])
 
-@manager.command
-def populate_words():
-    # Check if table "Word" exists and if it is empty
-    if not (engine.dialect.has_table(engine, "Word") and not db.session.query(base.Word).first()):
-        print("Table 'Word' does not exist or is not empty. Migrate and try again.")
-        return
-
-    print("Populating words...")
-    words_df = pd.read_csv("data/words.csv")
-    words_df.to_sql("Word", engine, if_exists="append", index=False)
-
 @manager.option("-s", "--schema", dest="s", help="Schema to featurise documents of.", default="personality")
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
 def featurise_documents(s, b):
@@ -102,22 +91,21 @@ def get_tweets(n, b, f):
 
     print(f"Force-all mode: {'enabled' if f else 'disabled'}")
 
-    #!! 11/04: Make sure to remove `.filter(twitter.Document.text != "").filter(twitter.Document.text != None)` eventually!
     if f:
         # If the --force_all mode is enabled, every user will have their 'document' updated
         # (Due to memory limitations, they will be extracted in batches)
-        N = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).count()
+        N = db.session.query(twitter.Document).count()
 
         LIMIT = b
         OFFSET = 0
-        docs = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).limit(LIMIT).offset(OFFSET).all()
+        docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
 
         i = 0
 
         while len(docs) > 0:
             i = update_documents(tweety, docs, N, save_every=b, i=i)
             OFFSET += LIMIT
-            docs = db.session.query(twitter.Document).filter(twitter.Document.text != "").filter(twitter.Document.text != None).limit(LIMIT).offset(OFFSET).all()
+            docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
     else:
         # Get document rows which have an empty text field and order them by ID
         docs = db.session.query(twitter.Document).filter(twitter.Document.text == "").order_by(twitter.Document.id).all()

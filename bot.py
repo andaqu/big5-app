@@ -32,8 +32,8 @@ class Tweety:
         # Remove URLs
         document = re.sub(r"(http|www)\S+", "", document)
 
-        # Replace with '
-
+        # Replace with ’ with '
+        document = re.sub("’", "'", document)
 
         # Replace non-latin letters with a space
         document = re.sub(r"[^A-Za-z'\-]", " ", document)
