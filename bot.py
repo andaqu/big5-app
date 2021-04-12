@@ -39,7 +39,7 @@ class Tweety:
         document = re.sub(r"[^A-Za-z'\-]", " ", document)
 
         # Remove any apostrophes or dashes not within two letters
-        d.text = re.sub(r"(?<!\w)(\'|\-)|(\'|\-)(?!\w)", "", d.text)
+        document = re.sub(r"(?<!\w)(\'|\-)|(\'|\-)(?!\w)", "", document)
 
         # Convert multiple spaces to a single space
         document = " ".join(document.split())
