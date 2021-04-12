@@ -13,12 +13,14 @@ engine = create_engine(app.config["SQLALCHEMY_DATABASE_URI"])
 
 @manager.option("-s", "--schema", dest="s", help="Schema to featurise documents of.", default="personality")
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
-def featurise_documents(s, b):
+@manager.option("-f", "--force_all", dest="f", help="Featurise entries that have a feature already.", default=0)
+def featurise_documents(s, b, f):
 
     # Check if parameters are valid
     try:
         b = int(b)
         Document = document_model[s]
+        f = bool(int(f))
     except:
         print("Revise parameters. Quitting...")
         return
@@ -31,11 +33,12 @@ def featurise_documents(s, b):
     LIMIT = b
     OFFSET = 0
 
-    # Get documents which have text
-    docs = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
-
-    # Get documents which have text but are not featurised
-    # docs = db.session.query(Document).filter(Document.features == None).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
+    if f:
+        # Get documents which have text
+        docs = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
+    else:
+        # Get documents which have text but are not featurised
+        docs = db.session.query(Document).filter(Document.features == None).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
 
     N = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).count()
 
@@ -60,13 +63,17 @@ def featurise_documents(s, b):
         print(f"*** Featurised and saved {i}/{N} documents. ***")
         
         OFFSET += LIMIT
-        docs = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
+
+        if f:
+            docs = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
+        else:
+            docs = db.session.query(Document).filter(Document.features == None).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
 
     t1 = time.time()
 
     print(f"Done! That took {(t1-t0)/60} minutes in total.")
 
-# worker: python manager.py get_tweets -n 400 -b 200 -f
+# worker: python manager.py get_tweets -n 400 -b 200
 @manager.option("-n", "--tweets", dest="n", help="Number of tweets to extract from every user.", default=400)
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
 @manager.option("-f", "--force_all", dest="f", help="Retrieve tweets of every user in database (restarting the process)", default=True)
@@ -94,6 +101,7 @@ def get_tweets(n, b, f):
     if f:
         # If the --force_all mode is enabled, every user will have their 'document' updated
         # (Due to memory limitations, they will be extracted in batches)
+        #? I think -f should only be used to update documents
         N = db.session.query(twitter.Document).count()
 
         LIMIT = b
@@ -107,8 +115,8 @@ def get_tweets(n, b, f):
             OFFSET += LIMIT
             docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
     else:
-        # Get document rows which have an empty text field and order them by ID
-        docs = db.session.query(twitter.Document).filter(twitter.Document.text == "").order_by(twitter.Document.id).all()
+        # Get document rows which have an null text field and order them by ID
+        docs = db.session.query(twitter.Document).filter(twitter.Document.text == None).order_by(twitter.Document.id).all()
         N = len(docs)
 
         if N == 0:
@@ -168,7 +176,6 @@ def update_documents(tweety:Tweety, docs, N:int, save_every:int, i:int=0):
             d.last = new_doc["last"]
             print(f"User [{d.id}]: Retrieved {tweety.tweets_to_extract} tweets. ({i})")
         else:
-            if d.text == "": d.text = None
             print(f"{new_doc['output']} ({i})")
 
         # Save the documents in `to_save` in batches of `save_every`

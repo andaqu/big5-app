@@ -63,8 +63,9 @@ heroku run flask db upgrade
 heroku pg:info # -a #
 heroku pg:psql
 git push heroku HEAD:master
+\copy public."Word" FROM 'data/woids.csv' DELIMITER ',' CSV HEADER;
 \copy personality."User" FROM 'data/personality.User.csv' DELIMITER ',' CSV HEADER;
 \copy personality."Document" FROM 'data/personality.Document.csv' DELIMITER ',' CSV HEADER;
 \copy twitter."User" FROM 'data/twitter.User.tsv' DELIMITER E'\t' CSV HEADER;
-\copy twitter."Document" FROM 'data/twitter.Document.csv' DELIMITER '\t' CSV HEADER;
+\copy twitter."Document" FROM 'data/twitter.Document.csv' DELIMITER ',' CSV HEADER;
 ```
