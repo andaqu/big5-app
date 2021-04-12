@@ -65,6 +65,6 @@ heroku pg:psql
 git push heroku HEAD:master
 \copy personality."User" FROM 'data/personality.User.csv' DELIMITER ',' CSV HEADER;
 \copy personality."Document" FROM 'data/personality.Document.csv' DELIMITER ',' CSV HEADER;
-\copy twitter."User" FROM 'data/twitter.User.csv' DELIMITER ',' CSV HEADER;
-\copy twitter."Document" FROM 'data/twitter.Document.csv' DELIMITER ',' CSV HEADER;
+\copy twitter."User" FROM 'data/twitter.User.tsv' DELIMITER E'\t' CSV HEADER;
+\copy twitter."Document" FROM 'data/twitter.Document.csv' DELIMITER '\t' CSV HEADER;
 ```
