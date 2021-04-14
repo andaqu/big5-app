@@ -63,9 +63,15 @@ heroku run flask db upgrade
 heroku pg:info # -a #
 heroku pg:psql
 git push heroku HEAD:master
-\copy public."Word" FROM 'data/woids.csv' DELIMITER ',' CSV HEADER;
+psql -U postgres
+\copy public."Word" FROM 'data/words.csv' DELIMITER ',' CSV HEADER;
 \copy personality."User" FROM 'data/personality.User.csv' DELIMITER ',' CSV HEADER;
 \copy personality."Document" FROM 'data/personality.Document.csv' DELIMITER ',' CSV HEADER;
-\copy twitter."User" FROM 'data/twitter.User.tsv' DELIMITER E'\t' CSV HEADER;
+\copy twitter."User" FROM 'data/twitter.User.csv' DELIMITER ',' CSV HEADER;
 \copy twitter."Document" FROM 'data/twitter.Document.csv' DELIMITER ',' CSV HEADER;
+\copy (SELECT d.features, u.o FROM personality."User" u INNER JOIN personality."Document" d ON u.id = d.id) TO 'export/o.csv' WITH CSV;
+\copy (SELECT d.features, u.c FROM personality."User" u INNER JOIN personality."Document" d ON u.id = d.id) TO 'export/c.csv' WITH CSV;
+\copy (SELECT d.features, u.e FROM personality."User" u INNER JOIN personality."Document" d ON u.id = d.id) TO 'export/e.csv' WITH CSV;
+\copy (SELECT d.features, u.a FROM personality."User" u INNER JOIN personality."Document" d ON u.id = d.id) TO 'export/a.csv' WITH CSV;
+\copy (SELECT d.features, u.n FROM personality."User" u INNER JOIN personality."Document" d ON u.id = d.id) TO 'export/n.csv' WITH CSV;
 ```

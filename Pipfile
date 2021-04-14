@@ -17,6 +17,7 @@ numpy = "*"
 tweepy = "*"
 simplejson = "*"
 requests = {extras = ["security"], version = "*"}
+nltk = "*"
 
 [dev-packages]
 

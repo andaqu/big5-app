@@ -2,6 +2,12 @@ from collections import Counter
 from sqlalchemy import func
 from app.ext import db
 import numpy as np
+import nltk
+
+try: nltk.data.find("taggers/universal_tagset")
+except LookupError: nltk.download("universal_tagset")
+
+POS = {"NOUN": "_n", "VERB": "_v", "ADJ": "_a", "ADV": "_r"}
 
 class BaseDocument(db.Model):
     __abstract__ = True
@@ -21,14 +27,28 @@ class BaseDocument(db.Model):
         }
 
 
-    def compute_features(self):
+    def compute_features(self, pos=False):
+
+        def count(word):
+            n = C[word]
+            if n: return n
+            return C[f"{word}_"]
+
         # Duplicate every apostrophe: this is for PostgreSQL, since apostrophe's are escaped by themselves
         text = self.text.replace("'", "''")
 
         # Split the text into words and get the document's count for every word
         words = text.split(" ")
-        count = Counter(words)
-        vocab = list(count.keys())
+
+        if pos:
+            words = nltk.pos_tag(words, tagset='universal')
+
+            for i, w in enumerate(words):
+                try: words[i] = w[0] + POS[w[1]]
+                except: words[i] = w[0] + "_?"
+
+        C = Counter(words)
+        vocab = list(C.keys())
 
         total = np.zeros(FEATURES)
         sub = np.zeros(FEATURES)
@@ -37,26 +57,30 @@ class BaseDocument(db.Model):
         q = '{"' + '", "'.join(vocab) + '"}'
 
         # Get word features and convert to dictionary
-        wordfs = db.session.execute(f"SELECT * FROM match_words('{q}');").fetchall() #! approx 0.2second/1k words
-        wordfs = {x[0]: x[1:] for x in wordfs}
+        res = db.session.execute(f"SELECT * FROM match_words{'_pos' if pos else ''}('{q}');").fetchall() #! approx 0.2second/1k words
+
+        wordfs = {}
+
+        for x in res:
+            if x[0] not in wordfs: wordfs[x[0]] = x[1:]
+            else: wordfs[f"{x[0]}_"] = x[1:]
 
         for word in wordfs:
-
-            word = "#null" if word == "null" else word
+            
             wordf = wordfs[word]
 
             # Convert wordf into a numpy array called new
             new = np.array(wordf, dtype=float) 
 
             # Keep track of zero-valued continuous features
-            sub += ((FLOATS == True) & np.isnan(new)) * count[word]
+            sub += ((FLOATS == True) & np.isnan(new)) * count(word)
 
             # Aggregate feature values within total
-            total += np.nan_to_num(new, 0) * count[word]
+            total += np.nan_to_num(new, 0) * count(word)
 
-        # set(count) - set(wordfs) is the set of words in the document not in the Words table
-        for word in set(count) - set(wordfs):
-            sub += (FLOATS == True) * count[word]
+        # set(C) - set(wordfs) is the set of words in the document not in the Words table
+        for word in set(C) - set(wordfs):
+            sub += (FLOATS == True) * count(word)
 
         # For categoricals: calculate the average, and thus probability of words belonging to a given category, by total / |D|
         # For continuous values: calculate the non-zero average (this is why `sub` is needed!)
