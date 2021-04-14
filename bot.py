@@ -32,7 +32,7 @@ class Tweety:
         # Remove URLs
         document = re.sub(r"(http|www)\S+", "", document)
 
-        # Replace with ’ with '
+        # Replace ’ with '
         document = re.sub("’", "'", document)
 
         # Replace non-latin letters with a space
@@ -40,6 +40,9 @@ class Tweety:
 
         # Remove any apostrophes or dashes not within two letters
         document = re.sub(r"(?<!\w)(\'|\-)|(\'|\-)(?!\w)", "", document)
+
+        # Replace null with #null
+        document = re.sub("null", "#null", document)
 
         # Convert multiple spaces to a single space
         document = " ".join(document.split())

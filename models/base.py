@@ -42,7 +42,6 @@ class BaseDocument(db.Model):
 
         for word in wordfs:
 
-            word = "#null" if word == "null" else word
             wordf = wordfs[word]
 
             # Convert wordf into a numpy array called new
@@ -82,9 +81,7 @@ class BaseUser(db.Model):
 
     @property
     def json(self):
-        return {
-            "personality": { "o": self.o, "c": self.c, "e": self.e, "a": self.a, "n": self.n }
-        }
+        return {"personality": { "o": self.o, "c": self.c, "e": self.e, "a": self.a, "n": self.n }}
 
     id = db.Column(db.Integer, primary_key=True)
     o = db.Column(db.Float())

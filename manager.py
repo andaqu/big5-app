@@ -33,14 +33,16 @@ def featurise_documents(s, b, f):
     LIMIT = b
     OFFSET = 0
 
+    print(f"Force-all mode: [{'enabled' if f else 'disabled'}]")
+
     if f:
         # Get documents which have text
-        docs = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
+        docs = db.session.query(Document).filter(Document.text != None).limit(LIMIT).all()
+        N = db.session.query(Document).filter(Document.text != None).count()
     else:
         # Get documents which have text but are not featurised
-        docs = db.session.query(Document).filter(Document.features == None).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
-
-    N = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).count()
+        docs = db.session.query(Document).filter(Document.features == None).filter(Document.text != None).limit(LIMIT).all()
+        N = db.session.query(Document).filter(Document.features == None).filter(Document.text != None).count()
 
     if N == 0:
         print("No documents to featurise.")
@@ -62,13 +64,12 @@ def featurise_documents(s, b, f):
         db.session.commit()
         print(f"*** Featurised and saved {i}/{N} documents. ***")
         
-        OFFSET += LIMIT
-
         if f:
-            docs = db.session.query(Document).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
+            OFFSET += LIMIT
+            docs = db.session.query(Document).filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
         else:
-            docs = db.session.query(Document).filter(Document.features == None).filter(Document.text != "").filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
-
+            docs = db.session.query(Document).filter(Document.features == None).filter(Document.text != None).limit(LIMIT).all()
+            
     t1 = time.time()
 
     print(f"Done! That took {(t1-t0)/60} minutes in total.")
@@ -96,7 +97,7 @@ def get_tweets(n, b, f):
     # Initialise Tweety
     tweety = Tweety(tweets_to_extract=n)
 
-    print(f"Force-all mode: {'enabled' if f else 'disabled'}")
+    print(f"Force-all mode: [{'enabled' if f else 'disabled'}]")
 
     if f:
         # If the --force_all mode is enabled, every user will have their 'document' updated
@@ -106,6 +107,7 @@ def get_tweets(n, b, f):
 
         LIMIT = b
         OFFSET = 0
+
         docs = db.session.query(twitter.Document).limit(LIMIT).offset(OFFSET).all()
 
         i = 0
@@ -153,7 +155,7 @@ def update_documents(tweety:Tweety, docs, N:int, save_every:int, i:int=0):
 
                 timeout = 60 * backoff
                 
-                print(f"Due to a weird error, sleeping for {timeout} seconds.")
+                print(f"Due to a weird disconnect, sleeping and trying again in {timeout} seconds.")
                 time.sleep(timeout)
 
                 backoff += 0.5
@@ -208,7 +210,7 @@ def personalise(b, f):
         print(f"Table 'twitter.Document' and/or 'twitter.User' do not exist. Migrate and try again.")
         return
 
-    print(f"Force-all mode: {'enabled' if f else 'disabled'}")
+    print(f"Force-all mode: [{'enabled' if f else 'disabled'}]")
 
     Document = document_model["twitter"]
     User = user_model["twitter"]
@@ -271,6 +273,10 @@ def chunks(lst, n):
     """
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
+
+# TODO: To add a # after every occurence of null in Twitter dataset
+def null_hotfix(b):
+    pass
 
 if __name__ == "__main__":
     manager.run()
