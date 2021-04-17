@@ -267,16 +267,12 @@ def personalise(b, f):
 
     return
 
-def chunks(lst, n):
+def chunks(l, n):
     """
     Yield successive n-sized chunks from lst.
     """
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
-
-# TODO: To add a # after every occurence of null in Twitter dataset
-def null_hotfix(b):
-    pass
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
 
 if __name__ == "__main__":
     manager.run()
