@@ -77,7 +77,7 @@ def featurise_documents(s, b, f):
 # worker: python manager.py get_tweets -n 400 -b 200
 @manager.option("-n", "--tweets", dest="n", help="Number of tweets to extract from every user.", default=400)
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=100)
-@manager.option("-f", "--force_all", dest="f", help="Retrieve tweets of every user in database (restarting the process)", default=True)
+@manager.option("-f", "--force_all", dest="f", help="Retrieve tweets of every user in database (restarting the process)", default=0)
 def get_tweets(n, b, f):
 
     # Check if parameters are valid
