@@ -1,4 +1,4 @@
-from app import create_app, db, base, twitter, document_model, user_model
+from app import create_app, db, base, twitter, document_model, user_model, features
 from personality_recogniser import Recogniser
 from sqlalchemy import create_engine
 from itertools import zip_longest
@@ -195,12 +195,13 @@ def update_documents(tweety:Tweety, docs, N:int, save_every:int, i:int=0):
     return i
 
 @manager.option("-b", "--batch_size", dest="b", help="Batch size to personalise and commit to database.", default=5000)
-@manager.option("-f", "--force_all", dest="f", help="Whether to personalise all of the users.", default=False)
+@manager.option("-f", "--force_all", dest="f", help="Whether to personalise all of the users.", default=0)
 def personalise(b, f):
 
     # Check if parameters are valid
     try:
         b = int(b)
+        f = bool(int(f))
     except:
         print("Revise parameters. Quitting...")
         return
@@ -210,19 +211,22 @@ def personalise(b, f):
         print(f"Table 'twitter.Document' and/or 'twitter.User' do not exist. Migrate and try again.")
         return
 
+    LIMIT = b
+    OFFSET = 0
+
     print(f"Force-all mode: [{'enabled' if f else 'disabled'}]")
 
     Document = document_model["twitter"]
     User = user_model["twitter"]
 
     if f:
-        # Get users to personalise which have a filled-in features field.
-        result = db.session.query(Document, User).filter(Document.id == User.id).filter(Document.features != None).all()
+        # Get users to personalise which have a filled-in features field
+        result = db.session.query(Document, User).filter(Document.id == User.id).filter(Document.features != None).limit(LIMIT).all()
+        N = db.session.query(Document).filter(Document.features != None).count()
     else:
-        # Get users to personalise which have a filled-in features field and do not have a personality.
-        result = db.session.query(Document, User).filter(Document.id == User.id).filter(Document.features != None).filter(User.o == None).all()
-
-    N = len(result)
+        # Get users to personalise which have a filled-in features field and do not have a personality
+        result = db.session.query(Document, User).filter(Document.id == User.id).filter(Document.features != None).filter(User.o == None).limit(LIMIT).all()
+        N = db.session.query(Document, User).filter(Document.id == User.id).filter(Document.features != None).filter(User.o == None).count()
 
     if N == 0:
         print("No users to personalise. Check if the users' documents are featurised or try including the --force_all parameter.")
@@ -230,18 +234,19 @@ def personalise(b, f):
 
     print(f"Extracting personality from [{N}] twitter users and saving every [{b}] users...")
 
-    # Initialise recogniser with a list of feature names.
-    features = [column.name for column in base.Word.__table__.columns][1:]
+    # Initialise recogniser with a list of feature names
     recogniser = Recogniser(features)
 
     i = 0
 
     t0 = time.time()
 
-    for res in chunks(result, b):
-        documents, users = zip(*res)
-        
+    while len(result) > 0:
+
+        documents, users = zip(*result)
+            
         X = { d.id : d.features for d in documents } # TODO: Have a look if this can be optimised
+        print(X)
 
         y = recogniser.personalise(X)
         if not y: break
@@ -252,27 +257,22 @@ def personalise(b, f):
             u.e = y[u.id]["e"]
             u.a = y[u.id]["a"]
             u.n = y[u.id]["n"]
-
-        if i + b > N:
-            i += len(users)
-        else:
-            i += b
+            i += 1
 
         db.session.bulk_save_objects(users)
         db.session.commit()
         print(f"=== Recognised and stored the personality of {i}/{N} users. ===")
+        
+        if f:
+            OFFSET += LIMIT
+            result = db.session.query(Document, User).filter(Document.id == User.id).filter(Document.features != None).limit(LIMIT).offset(OFFSET).all()
+        else:
+            result = db.session.query(Document, User).filter(Document.id == User.id).filter(Document.features != None).filter(User.o == None).limit(LIMIT).all()
 
     t1 = time.time()
     print(f"Done! That took {(t1-t0)/60} minutes in total.")
 
     return
-
-def chunks(l, n):
-    """
-    Yield successive n-sized chunks from lst.
-    """
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
 
 if __name__ == "__main__":
     manager.run()
