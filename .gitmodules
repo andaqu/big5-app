@@ -1,6 +1,0 @@
-[submodule "personality-recogniser"]
-	path = personality-recogniser
-	url = https://github.com/wendru18/personality-recogniser
-[submodule "personality_recogniser"]
-	path = personality_recogniser
-	url = https://github.com/wendru18/personality_recogniser
