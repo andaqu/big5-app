@@ -32,7 +32,7 @@ class Model:
     def create_arff(self, instances, data_type):
 
         p = os.path.join(self.arff_dir, f"{self.id}.arff")
-
+        print(f"Creating file at {p}")
         output_arff = open(p, "w")
         output_arff.write("@relation " + str(self.id) + "\n")
         for i, s in enumerate(instances):
