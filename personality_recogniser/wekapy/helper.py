@@ -4,9 +4,9 @@ import time
 import stat
 import os
 
-st = os.stat('personality_recogniser\weka.jar')
+st = os.stat('app\personality_recogniser\weka.jar')
 print(st)
-os.chmod('personality_recogniser\weka.jar', st.st_mode | stat.S_IEXEC)
+os.chmod('app\personality_recogniser\weka.jar', st.st_mode | stat.S_IEXEC)
 
 def decode_data(data):
     return data.decode('utf-8').strip()
