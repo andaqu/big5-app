@@ -1,5 +1,5 @@
+from .helper import document_model, user_model, features
 from models import base, personality, twitter
-from .helper import document_model, user_model
 from flask_migrate import Migrate
 from flask import Flask
 from .main import main
