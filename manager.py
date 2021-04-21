@@ -246,8 +246,7 @@ def personalise(b, f):
         documents, users = zip(*result)
             
         X = { d.id : d.features for d in documents } # TODO: Have a look if this can be optimised
-        print(X)
-
+        
         y = recogniser.personalise(X)
         if not y: break
 
