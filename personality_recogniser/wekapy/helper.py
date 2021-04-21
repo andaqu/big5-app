@@ -4,15 +4,11 @@ import time
 import stat
 import os
 
-st = os.stat('app\personality_recogniser\weka.jar')
-print(st)
-os.chmod('app\personality_recogniser\weka.jar', st.st_mode | stat.S_IEXEC)
-
 def decode_data(data):
     return data.decode('utf-8').strip()
 
 def run_process(options):
-    print(" ".join(options))
+    print(options)
     start_time = time.time()
     process = subprocess.Popen(options, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     process_output, process_error = map(decode_data, process.communicate())
