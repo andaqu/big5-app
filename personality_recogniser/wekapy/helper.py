@@ -1,7 +1,12 @@
 from .WekaPyException import WekaPyException
 import subprocess
 import time
+import stat
 import os
+
+st = os.stat('personality_recogniser\weka.jar')
+print(st)
+os.chmod('personality_recogniser\weka.jar', st.st_mode | stat.S_IEXEC)
 
 def decode_data(data):
     return data.decode('utf-8').strip()
