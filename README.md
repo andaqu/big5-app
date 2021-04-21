@@ -62,6 +62,7 @@ heroku logs --tail
 heroku run flask db upgrade
 heroku pg:info # -a #
 heroku pg:psql
+heroku plugins:install java
 git push heroku HEAD:master
 psql -U postgres
 \copy public."Word" FROM 'data/words.csv' DELIMITER ',' CSV HEADER;
