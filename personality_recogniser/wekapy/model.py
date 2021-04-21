@@ -53,9 +53,6 @@ class Model:
         if data_type == "test":
             self.test_file = p
 
-        with open(p, "r") as f:
-            print(f.read().split("\n")[0])
-
     # Load a model, if it exists, and set this as the currently trained model for this
     # Model instance.
     def load_model(self, model_file):
@@ -77,7 +74,7 @@ class Model:
         options = ["java", "-Xmx{}M".format(str(self.max_memory))]
         if self.classpath is not None:
             options.extend(["-cp", self.classpath])
-        options.extend(["weka.classifiers." + self.classifier, "-T", self.test_file, "-l", self.model_file, "-p", "0", "-c", "1"])
+        options.extend(["weka.classifiers." + self.classifier, "-T", "%JAVA_HOME%", "-l", self.model_file, "-p", "0", "-c", "1"])
 
         process_output, self.time_taken = run_process(options)
 
