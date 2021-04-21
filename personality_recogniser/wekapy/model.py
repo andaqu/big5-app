@@ -53,6 +53,9 @@ class Model:
         if data_type == "test":
             self.test_file = p
 
+        with open(p, "r") as f:
+            print(f.read().split("\n")[0])
+
     # Load a model, if it exists, and set this as the currently trained model for this
     # Model instance.
     def load_model(self, model_file):
