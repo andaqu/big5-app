@@ -2,4 +2,3 @@
 __pycache__
 .env
 export/*
-personality_recogniser/wekapy/temp
