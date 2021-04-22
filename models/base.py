@@ -378,5 +378,6 @@ class Word(db.Model):
 
 # The first type is ignored since it is the word itself (String)
 WORDF_TYPES = [column.type for column in Word.__table__.columns][1:]
+WORDF_NAMES = [column.name for column in Word.__table__.columns][1:]
 FEATURES = len(WORDF_TYPES)
 FLOATS = np.array([True if str(t) is "FLOAT" else False for t in WORDF_TYPES])
