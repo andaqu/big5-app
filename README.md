@@ -75,5 +75,5 @@ psql -U postgres
 \copy (SELECT d.features, u.e FROM personality."User" u INNER JOIN personality."Document" d ON u.id = d.id) TO 'export/e.csv' WITH CSV;
 \copy (SELECT d.features, u.a FROM personality."User" u INNER JOIN personality."Document" d ON u.id = d.id) TO 'export/a.csv' WITH CSV;
 \copy (SELECT d.features, u.n FROM personality."User" u INNER JOIN personality."Document" d ON u.id = d.id) TO 'export/n.csv' WITH CSV;
-\copy (SELECT id, o, c, e, a, n FROM twitter."User" WHERE o IS NOT NULL) TO 'export/twitter_personality.csv' WITH CSV;
+\copy (SELECT u.id, u.o, u.c, u.e, u.a, u.n FROM twitter."User" u INNER JOIN twitter."Document" d ON u.id = d.id WHERE u.o IS NOT NULL AND d.wc >= 200) TO 'export/twitter_personality.csv' WITH CSV;
 ```

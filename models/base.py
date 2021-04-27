@@ -13,6 +13,7 @@ class BaseDocument(db.Model):
 
     def __init__(self, text):
         self.text = text
+        self.wc = wc
 
     @property
     def json(self):

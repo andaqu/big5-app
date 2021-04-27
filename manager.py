@@ -273,54 +273,5 @@ def personalise(b, f):
 
     return
 
-# NOTE: This is a hotfix
-@manager.option("-s", "--schema", dest="s", help="Schema to featurise documents of.", default="personality")
-@manager.option("-b", "--batch_size", dest="b", help="Batch size to commit to database.", default=1000)
-def word_counter(s, b):
-    # Check if parameters are valid
-    try:
-        b = int(b)
-        Document = document_model[s]
-    except:
-        print("Revise parameters. Quitting...")
-        return
-
-        # Check if table "Document" exists within the specified schema
-    if not engine.dialect.has_table(engine, "Document", schema=s):
-        print(f"Table '{s}.Document' does not exist. Migrate and try again.")
-        return
-
-    LIMIT = b
-    OFFSET = 0
-
-    # Get documents which have text but are not featurised
-    docs = db.session.query(Document).filter(Document.text != None).limit(LIMIT).all()
-    N = db.session.query(Document).filter(Document.text != None).count()
-
-    if N == 0:
-        print("No documents to count words of.")
-        return
-
-    i = 0
-
-    t0 = time.time()
-
-    while len(docs) > 0:
-
-        for d in docs:
-            d.wc = len(d.text.split(" "))
-            i += 1
-
-        db.session.bulk_save_objects(docs)
-        db.session.commit()
-        print(f"*** Counted words of {i}/{N} documents. ***")
-
-        OFFSET += LIMIT
-        docs = db.session.query(Document).filter(Document.text != None).limit(LIMIT).offset(OFFSET).all()
-
-    t1 = time.time()
-
-    print(f"Done! That took {(t1-t0)/60} minutes in total.")
-
 if __name__ == "__main__":
     manager.run()
