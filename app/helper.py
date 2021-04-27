@@ -2,7 +2,6 @@ from models import personality, twitter, base
 from .ext import db
 
 schemas = {"twitter", "personality"}
-required = {"twitter": ["id", "follows"], "personality": ["personality", "document"]}
 document_model = {"twitter": twitter.Document, "personality": personality.Document}
 user_model = {"twitter": twitter.User, "personality": personality.User}
 features = base.WORDF_NAMES

@@ -9,6 +9,7 @@ class BaseDocument(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text())
     features = db.Column(db.ARRAY(db.Float()))
+    wc = db.Column(db.Integer)
 
     def __init__(self, text):
         self.text = text
@@ -17,7 +18,8 @@ class BaseDocument(db.Model):
     def json(self):
         return {
             "text": self.text,
-            "features": self.features
+            "features": self.features,
+            "wc": self.wc
         }
 
 

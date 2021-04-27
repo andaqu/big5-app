@@ -42,9 +42,11 @@ class Tweety:
         document = re.sub(r"(?<!\w)(\'|\-)|(\'|\-)(?!\w)", "", document)
 
         # Convert multiple spaces to a single space
-        document = " ".join(document.split())
+        document = document.split()
+        wc = len(document)
+        document = " ".join(document)
 
-        return document
+        return document, wc
 
     def get_document(self, user_id:str, stored_tweets:int = 0, first:int = None, last:int = None):
         """
@@ -124,6 +126,6 @@ class Tweety:
             extracted_tweets = extracted_tweets[:tweets_to_extract]
             p2 = extracted_tweets[-1].id
 
-        document = self.textualise(extracted_tweets)
+        document, wc = self.textualise(extracted_tweets)
 
-        return {"valid" : True, "output": {"text": document, "stored_tweets": len(extracted_tweets) + stored_tweets, "first": p1, "last": p2}, "sleep": False}
+        return {"valid" : True, "output": {"text": document, "stored_tweets": len(extracted_tweets) + stored_tweets, "first": p1, "last": p2, "wc": wc}, "sleep": False}
